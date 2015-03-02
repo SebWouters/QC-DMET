@@ -26,8 +26,9 @@ QC-DMET requires python, numpy, scipy,
 [libcint](https://github.com/sunqm/libcint), and 
 [pyscf](https://github.com/sunqm/pyscf).
 
-The path to PyCheMPS2.so can be adjusted in src/solver.py and
-the path to the folder in which pyscf is installed in src/localintegrals.py.
+The path to PyCheMPS2.so can be adjusted in [solver.py](src/solver.py) and
+the path to the folder in which pyscf is installed in 
+[localintegrals.py](src/localintegrals.py).
 
 Start from the files test*.py.
 

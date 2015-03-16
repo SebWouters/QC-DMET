@@ -24,7 +24,7 @@ import sys
 sys.path.append('/home/seba/CheMPS2/build/PyCheMPS2')
 import PyCheMPS2
 
-def solve( OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=False ):
+def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=False ):
 
     # Set the seed of the random number generator and cout.precision
     Initializer = PyCheMPS2.PyInitialize()
@@ -34,7 +34,7 @@ def solve( OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=False )
     Group = 0
     orbirreps = np.zeros([ Norb ], dtype=ctypes.c_int)
     HamCheMPS2 = PyCheMPS2.PyHamiltonian(Norb, Group, orbirreps)
-    HamCheMPS2.setEconst( 0.0 )
+    HamCheMPS2.setEconst( CONST )
     for cnt1 in range(0, Norb):
         for cnt2 in range(0, Norb):
             HamCheMPS2.setTmat(cnt1, cnt2, FOCK[cnt1, cnt2])
@@ -117,7 +117,8 @@ def solve( OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=False )
     OneRDM = np.einsum( 'ijkk->ij', TwoRDM ) / ( Nel - 1 )
     
     # To calculate the impurity energy, rescale the JK matrix with a factor 0.5 to avoid double counting: 0.5 * ( OEI + FOCK ) = OEI + 0.5 * JK
-    ImpurityEnergy =  0.5 * np.sum(np.multiply( OneRDM[:Nimp,:] , OEI[:Nimp,:] + FOCK[:Nimp,:] ))
-    ImpurityEnergy += 0.5 * np.sum(np.multiply( TwoRDM[:Nimp,:,:,:] , TEI[:Nimp,:,:,:] ))
+    ImpurityEnergy = CONST
+    ImpurityEnergy += 0.5 * np.einsum( 'ij,ij->', OneRDM[:Nimp,:], OEI[:Nimp,:] + FOCK[:Nimp,:] )
+    ImpurityEnergy += 0.5 * np.einsum( 'ijkl,ijkl->', TwoRDM[:Nimp,:,:,:], TEI[:Nimp,:,:,:] )
     return ( ImpurityEnergy, OneRDM )
 

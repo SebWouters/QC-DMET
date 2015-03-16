@@ -20,7 +20,7 @@
 import sys
 sys.path.append('src')
 import localintegrals, dmet
-from pyscf import gto
+from pyscf import gto, scf
 import numpy as np
 import math as m
 
@@ -63,7 +63,11 @@ Li    S
 ''')}
 mol.build()
 
-myInts = localintegrals.localintegrals( mol )
+mf = scf.RHF( mol )
+mf.verbose = 3
+mf.scf()
+
+myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'qiming_lih.molden' )
 
 #Imp size : 1 LiH

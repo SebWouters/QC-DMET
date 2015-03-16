@@ -22,10 +22,14 @@ import qcdmethelper
 import solver
 import numpy as np
 from scipy import optimize
+import time
 
 class dmet:
 
     def __init__( self, theInts, impurityClusters, isTranslationInvariant ):
+    
+        if ( isTranslationInvariant == True ):
+            assert( theInts.TI_OK == True )
     
         self.ints     = theInts
         self.helper   = qcdmethelper.qcdmethelper( self.ints )
@@ -101,7 +105,7 @@ class dmet:
         return theH1
         
     def doexact( self, chempot_imp=0.0 ):
-        
+    
         OneRDM = self.helper.construct1RDM_loc( self.doFock, self.doSCF, self.umat )
         self.energy   = 0.0
         self.imp_1RDM = []
@@ -123,31 +127,11 @@ class dmet:
             dmetOEI  = self.ints.dmet_oei(  loc2dmet, 2*numImpOrbs )
             dmetFOCK = self.ints.dmet_fock( loc2dmet, 2*numImpOrbs, core1RDM_loc )
             dmetTEI  = self.ints.dmet_tei(  loc2dmet, 2*numImpOrbs )
-
-            '''if ( self.DoHubbard == True ):
-            
-                # Put TEI with an index on the bath to zero
-                dmetTEI[numImpOrbs:,:,:,:] = 0.0
-                dmetTEI[:,numImpOrbs:,:,:] = 0.0
-                dmetTEI[:,:,numImpOrbs:,:] = 0.0
-                dmetTEI[:,:,:,numImpOrbs:] = 0.0
-
-                umat_bath = np.dot( np.dot( loc2dmet[:,numImpOrbs:2*numImpOrbs].T , self.umat ) , loc2dmet[:,numImpOrbs:2*numImpOrbs] )
-                newFOCK = np.array( dmetFOCK, copy=True ) # JK_core taken into account on impurity
-                if ( self.doFock == True ):
-                    # The u-matrix bridges the gap between Ffixed and the mean-field 1-RDM closest to the ED 1-RDM
-                    Ffix_bath = np.dot( np.dot( loc2dmet[:,numImpOrbs:2*numImpOrbs].T , self.ints.loc_rhf_fock() ) , loc2dmet[:,numImpOrbs:2*numImpOrbs] )
-                    newFOCK[numImpOrbs:,numImpOrbs:] = Ffix_bath + umat_bath # u taken into account on bath
-                else:
-                    # The u-matrix bridges the gap between the OEI and the mean-field 1-RDM closest to the ED 1-RDM; it captures JK-effects
-                    newFOCK[numImpOrbs:,numImpOrbs:] = dmetOEI[numImpOrbs:,numImpOrbs:] + umat_bath # u taken into account on bath
-                dmetFOCK = newFOCK
-                # One last bit of interaction which is missing to at least capture the HF solution in the impurity is the JK(bath)!!!'''
             
             Nelec_in_imp = 2*numImpOrbs
             if ( Nelec_in_imp > self.ints.Nelec ):
                 Nelec_in_imp = self.ints.Nelec
-            IMP_energy, IMP_1RDM = solver.solve( dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
+            IMP_energy, IMP_1RDM = solver.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
             
@@ -291,7 +275,7 @@ class dmet:
         iteration = 0
         u_diff = 1.0
         convergence_threshold = 1e-5
-        print "RHF energy =", self.ints.mf_energy
+        print "RHF energy =", self.ints.fullEhf
         
         # Make sure that the initial bath orbitals are calculated based on the Fock matrix
         #    If self.doFock : self.umat = 0

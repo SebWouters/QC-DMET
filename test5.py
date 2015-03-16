@@ -20,7 +20,7 @@
 import sys
 sys.path.append('src')
 import localintegrals, dmet
-from pyscf import gto
+from pyscf import gto, scf
 import numpy as np
 
 mol = gto.Mole() # Benzene optimized with Psi4 B3LYP/cc-pVDZ
@@ -38,20 +38,26 @@ mol.atom = '''
      H   -2.157597486829    -1.245660462400     0.000000000000
      C   -1.211265339156    -0.699329968382     0.000000000000
   '''
-mol.basis = 'sto-6g'
+mol.basis = '6-31g'
 mol.symmetry = 0
 mol.charge = 0
 mol.spin = 0 #2*S; multiplicity-1
 mol.build()
 
-myInts = localintegrals.localintegrals( mol )
+mf = scf.RHF( mol )
+mf.verbose = 3
+mf.scf()
+
+active = np.array([ 17, 20, 21, 22, 23, 30 ]) - 1
+
+myInts = localintegrals.localintegrals( mf, active, 'boys' )
 myInts.molden( 'benzene.molden' )
+myInts.exact_reference()
 
 impurityClusters = []
-for cluster in range(6):
-    impurities = np.zeros( [ myInts.mol.nao_nr() ], dtype=int )
-    for orb in range(6):
-        impurities[ 6*cluster + orb ] = 1
+for cluster in range(len(active)):
+    impurities = np.zeros( [ len(active) ], dtype=int )
+    impurities[ cluster ] = 1
     impurityClusters.append( impurities )
 isTranslationInvariant = False
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant )

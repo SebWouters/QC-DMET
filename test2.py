@@ -20,7 +20,7 @@
 import sys
 sys.path.append('src')
 import localintegrals, dmet
-from pyscf import gto
+from pyscf import gto, scf
 import numpy as np
 
 b1 = 1.8
@@ -37,8 +37,13 @@ for i in range(nat):
 mol.basis = {'H': 'sto-3g',}
 mol.build()
 
-myInts = localintegrals.localintegrals( mol )
+mf = scf.RHF( mol )
+mf.verbose = 3
+mf.scf()
+
+myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'qiming_h30sz.molden' )
+#myInts.exact_reference()
 
 #Imp size : 1 - 2 - 5 atoms
 atoms_per_imp = 2

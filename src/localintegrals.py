@@ -21,25 +21,56 @@ import sys
 sys.path.append('/home/seba') #Folder in which PySCF is installed
 from pyscf import gto, scf, ao2mo, tools, future
 from pyscf.future import lo
-from pyscf.tools import molden
+from pyscf.tools import molden, localizer
+import rhf
+import solver
 import numpy as np
 
 class localintegrals:
 
-    def __init__( self, molecule ):
-    
-        self.mol    = molecule
-        self.ao2loc = lo.orth.orth_ao( self.mol, 'meta_lowdin' )
+    def __init__( self, the_mf, active_orbs, localizationtype ):
+
+        assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ))
+        
+        # Information on the full HF problem
+        self.mol        = the_mf.mol
+        self.fullEhf    = the_mf.hf_energy
+        self.fullDMao   = np.dot(np.dot( the_mf.mo_coeff, np.diag( the_mf.mo_occ )), the_mf.mo_coeff.T )
+        self.fullJKao   = scf.hf.get_veff( self.mol, self.fullDMao, 0, 0, 1 ) #Last 3 numbers: dm_last, vhf_last, hermi
+        self.fullFOCKao = self.mol.intor('cint1e_kin_sph') + self.mol.intor('cint1e_nuc_sph') + self.fullJKao
+        
+        # Active space information
+        self._which   = localizationtype
+        self.active   = np.zeros( [ self.mol.nao_nr() ], dtype=int )
+        self.active[ active_orbs ] = 1
+        self.Norbs    = np.sum( self.active ) # Number of active space orbitals
+        self.Nelec    = int(np.rint( self.mol.nelectron - np.sum( the_mf.mo_occ[ self.active==0 ] ))) # Total number of electrons minus frozen part
+        
+        # Localize the orbitals
+        if ( self._which == 'meta_lowdin' ):
+            assert( self.Norbs == self.mol.nao_nr() ) # Full active space required
+            self.ao2loc = lo.orth.orth_ao( self.mol, self._which )
+            self.TI_OK  = True
+        if ( self._which == 'boys' ):
+            loc = localizer.localizer( self.mol, the_mf.mo_coeff[ : , self.active==1 ], self._which )
+            self.ao2loc = loc.optimize()
+            self.TI_OK  = False
         assert( self.loc_ortho() < 1e-8 )
-        mf = scf.RHF( self.mol )
-        mf.verbose = 0
-        mf.scf()
-        DMao = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )
-        self.mf_energy = mf.hf_energy
-        self.JKao      = scf.hf.get_veff( self.mol, DMao, 0, 0, 1 ) #Last 3 numbers: dm_last, vhf_last, hermi
-        self.eri       = mf._eri
-        self.Norbs     = self.mol.nao_nr()
-        self.Nelec     = self.mol.nelectron
+        
+        # Effective Hamiltonian due to frozen part
+        self.frozenDMmo  = np.array( the_mf.mo_occ, copy=True )
+        self.frozenDMmo[ self.active==1 ] = 0 # Only the frozen MO occupancies nonzero
+        self.frozenDMao  = np.dot(np.dot( the_mf.mo_coeff, np.diag( self.frozenDMmo )), the_mf.mo_coeff.T )
+        self.frozenJKao  = scf.hf.get_veff( self.mol, self.frozenDMao, 0, 0, 1 ) #Last 3 numbers: dm_last, vhf_last, hermi
+        self.frozenOEIao = self.fullFOCKao - self.fullJKao + self.frozenJKao
+        
+        # Active space OEI and ERI
+        self.activeCONST = self.mol.energy_nuc() + np.einsum( 'ij,ij->', self.frozenOEIao - 0.5*self.frozenJKao, self.frozenDMao )
+        self.activeOEI   = np.dot( np.dot( self.ao2loc.T, self.frozenOEIao ), self.ao2loc )
+        self.activeFOCK  = np.dot( np.dot( self.ao2loc.T, self.fullFOCKao  ), self.ao2loc )
+        self.activeERI   = ao2mo.outcore.full_iofree( self.mol, self.ao2loc, compact=False ).reshape(self.Norbs, self.Norbs, self.Norbs, self.Norbs)
+        
+        #self.debug_matrixelements()
         
     def molden( self, filename ):
     
@@ -52,54 +83,63 @@ class localintegrals:
         ShouldBeI = np.dot( np.dot( self.ao2loc.T , self.mol.intor('cint1e_ovlp_sph') ) , self.ao2loc )
         return np.linalg.norm( ShouldBeI - np.eye( ShouldBeI.shape[0] ) )
         
+    def debug_matrixelements( self ):
+    
+        eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
+        eigvecs = eigvecs[ :, eigvals.argsort() ]
+        assert( self.Nelec % 2 == 0 )
+        numPairs   = self.Nelec / 2
+        DMguess    = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
+        DMloc      = rhf.solve( self.activeOEI, self.activeERI, DMguess, numPairs )
+        newFOCKloc = self.loc_rhf_fock_bis( DMloc )
+        newRHFener = self.activeCONST + 0.5 * np.einsum( 'ij,ij->', DMloc, self.activeOEI + newFockloc )
+        print "2-norm difference of RDM(self.activeFOCK) and RDM(self.active{OEI,ERI})  =", np.linalg.norm( DMguess - DMloc )
+        print "2-norm difference of self.activeFOCK and FOCK(RDM(self.active{OEI,ERI})) =", np.linalg.norm( self.activeFOCK - newFOCKloc )
+        print "RHF energy of mean-field input           =", self.fullEhf
+        print "RHF energy based on self.active{OEI,ERI} =", newRHFener
+        
+    def exact_reference( self ):
+    
+        print "Exact reference active space ( Norb, Nelec ) = (", self.Norbs, ",", self.Nelec, ")"
+        chemical_pot = 0.0
+        printstuff   = True
+        GSenergy, GS_1DM = solver.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
+        print "Ground state energy =", GSenergy
+        
     def const( self ):
     
-        return self.mol.energy_nuc()
+        return self.activeCONST
         
     def loc_oei( self ):
         
-        return np.dot( np.dot( self.ao2loc.T , self.mol.intor('cint1e_kin_sph') + self.mol.intor('cint1e_nuc_sph') ) , self.ao2loc )
+        return self.activeOEI
         
     def loc_rhf_fock( self ):
     
-        Fockao  = self.JKao + self.mol.intor('cint1e_kin_sph') + self.mol.intor('cint1e_nuc_sph')
-        Fockloc = np.dot( np.dot( self.ao2loc.T , Fockao ) , self.ao2loc )
-        return Fockloc
+        return self.activeFOCK
         
     def loc_rhf_fock_bis( self, DMloc ):
 
-        # DMloc is the RHF solution in the localized basis for a custom one-electron operator
-        newDMao = np.dot( np.dot( self.ao2loc , DMloc ) , self.ao2loc.T )
-        newJKao = scf.hf.get_veff( self.mol, newDMao, 0, 0, 1 )
-        Fockao  = newJKao + self.mol.intor('cint1e_kin_sph') + self.mol.intor('cint1e_nuc_sph')
-        Fockloc = np.dot( np.dot( self.ao2loc.T , Fockao ) , self.ao2loc )
-        return Fockloc
+        FOCKloc = self.activeOEI + np.einsum( 'ijkl,ij->kl', self.activeERI, DMloc ) - 0.5 * np.einsum( 'ijkl,ik->jl', self.activeERI, DMloc )
+        return FOCKloc
 
     def loc_tei( self ):
     
-        #return ao2mo.outcore.full_iofree( self.mol, self.ao2loc, compact=False ).reshape(Norb, Norb, Norb, Norb)
-        return ao2mo.incore.full( self.eri, self.ao2loc, compact=False ).reshape(self.Norbs, self.Norbs, self.Norbs, self.Norbs)
+        return self.activeERI
         
     def dmet_oei( self, loc2dmet, numActive ):
     
-        ao2dmet = np.dot( self.ao2loc , loc2dmet[:,:numActive] )
-        OEIdmet = np.dot( np.dot( ao2dmet.T , self.mol.intor('cint1e_kin_sph') + self.mol.intor('cint1e_nuc_sph') ) , ao2dmet )
+        OEIdmet = np.dot( np.dot( loc2dmet[:,:numActive].T, self.activeOEI ), loc2dmet[:,:numActive] )
         return OEIdmet
         
-    def dmet_fock( self, loc2dmet, numActive, core1RDM_loc ):
+    def dmet_fock( self, loc2dmet, numActive, coreDMloc ):
     
-        DMao     = np.dot( np.dot( self.ao2loc , core1RDM_loc ) , self.ao2loc.T )
-        JKao     = scf.hf.get_veff( self.mol, DMao, 0, 0, 1 ) #Last 3 numbers: dm_last, vhf_last, hermi
-        FOCKao   = JKao + self.mol.intor('cint1e_kin_sph') + self.mol.intor('cint1e_nuc_sph')
-        ao2dmet  = np.dot( self.ao2loc , loc2dmet[:,:numActive] )
-        FOCKdmet = np.dot( np.dot( ao2dmet.T , FOCKao ) , ao2dmet )
+        FOCKdmet = np.dot( np.dot( loc2dmet[:,:numActive].T, self.loc_rhf_fock_bis( coreDMloc ) ), loc2dmet[:,:numActive] )
         return FOCKdmet
         
     def dmet_tei( self, loc2dmet, numActive ):
     
-        ao2dmet = np.dot( self.ao2loc , loc2dmet[:,:numActive] )
-        #TEIdmet = ao2mo.outcore.full_iofree( self.mol, ao2dmet, compact=False ).reshape(numActive, numActive, numActive, numActive)
-        TEIdmet = ao2mo.incore.full( self.eri, ao2dmet, compact=False ).reshape(numActive, numActive, numActive, numActive)
+        TEIdmet = ao2mo.incore.full( ao2mo.restore( 8, self.activeERI, self.Norbs ), loc2dmet[:,:numActive], compact=False ).reshape(numActive, numActive, numActive, numActive)
         return TEIdmet
         
         

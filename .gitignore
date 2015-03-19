@@ -1,4 +1,7 @@
-*~
 *pyc
-*molden
+*~
+*.molden
+*.txt
+src/*pyc
+src/*~
 

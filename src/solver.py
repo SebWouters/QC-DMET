@@ -41,6 +41,8 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
             for cnt3 in range(0, Norb):
                 for cnt4 in range(0, Norb):
                     HamCheMPS2.setVmat(cnt1, cnt2, cnt3, cnt4, TEI[cnt1, cnt3, cnt2, cnt4]) #From chemist to physics notation
+    '''HamCheMPS2.save()
+    exit(123)'''
     if (chempot_imp != 0.0):
         for orb in range(0, Nimp):
             HamCheMPS2.setTmat(orb, orb, FOCK[orb, orb] - chempot_imp)

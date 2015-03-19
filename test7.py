@@ -152,7 +152,7 @@ if ( nAtomPerImp == 5 ):
     if ( True ):
         ao2loc_old = myInts.ao2loc.copy()
         for cnt in range( 12 ):
-            myInts.ao2loc[ cnt*nAtomPerImp : (cnt+1)*nAtomPerImp ] = ao2loc_old[ clusters[cnt, :] ]
+            myInts.ao2loc[ :, cnt*nAtomPerImp : (cnt+1)*nAtomPerImp ] = ao2loc_old[ :, clusters[cnt, :] ]
         myInts.molden( 'buckyball-reordered.molden' )
         myInts.ao2loc = ao2loc_old.copy()
     for cnt in range( 12 ):

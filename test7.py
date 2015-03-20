@@ -105,10 +105,18 @@ exit(123)'''
 active = np.hstack((np.array([ 121, 131, 132, 133, 145, 146, 147, 148, 149 ]), range( 160, 211 ))) - 1
 
 myInts = localintegrals.localintegrals( mf, active, 'boys' )
+for atom in range( mol.natm ):
+    # co = [ cos(phi)sin(theta), sin(phi)sin(theta), cos(theta) ] = unit vector pointing from origin to carbon atom
+    # p_r = co_x * p_x + co_y * p_y + co_z * p_z
+    co = mol.atom_coord( atom ) / np.linalg.norm( mol.atom_coord( atom ) )
+    coeff_pxyz = myInts.ao2loc[ 9*atom+3 : 9*atom+6, atom ] # 9 basisfunctions per atom in 6-31G
+    coeff_pr = np.einsum( 'i,i->', coeff_pxyz, co ) # are all 0.5526 * ( \pm 1 )
+    if ( coeff_pr < 0.0 ):
+        myInts.ao2loc[ :, atom ] = - myInts.ao2loc[ :, atom ]
 myInts.molden( 'buckyball.molden' )
 #myInts.exact_reference()
 
-nAtomPerImp = 5
+nAtomPerImp = 2
 impurityClusters = []
 
 if ( nAtomPerImp == 1 ):

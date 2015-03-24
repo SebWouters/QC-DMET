@@ -43,8 +43,8 @@ class dmet:
         self.leastsq    = False # Upon setting to True all hell will break loose. Beware!
         self.fitImpBath = True
         
-        self.print_u    = False
-        self.print_rdm  = False
+        self.print_u    = True
+        self.print_rdm  = True
         
         self.testclusters()
         
@@ -284,7 +284,7 @@ class dmet:
         if ( np.linalg.norm( self.umat ) == 0.0 ) and ( not self.doFock ):
             self.umat = self.flat2square( self.square2flat( self.ints.loc_rhf_fock() - self.ints.loc_oei() ) )
         
-        while ( u_diff > convergence_threshold ) or ( iteration < 2 ):
+        while ( u_diff > convergence_threshold ):
         
             iteration += 1
             print "DMET iteration", iteration
@@ -292,12 +292,9 @@ class dmet:
             rdm_old = self.transform_ed_1rdm()
             
             # Find the chemical potential for the correlated impurity problem
-            if ( iteration > 1 ):
-                #self.mu_imp = optimize.brentq( self.numeleccostfunction, self.mu_imp - 10*u_diff , self.mu_imp + 10*u_diff )
-                self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
-                print "   Chemical potential =", self.mu_imp
-            else:
-                self.doexact()
+            #self.mu_imp = optimize.brentq( self.numeleccostfunction, self.mu_imp - 10*u_diff , self.mu_imp + 10*u_diff )
+            self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+            print "   Chemical potential =", self.mu_imp
             print "   Energy =", self.energy
             
             # Solve for the u-matrix

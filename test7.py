@@ -116,7 +116,7 @@ for atom in range( mol.natm ):
 myInts.molden( 'buckyball.molden' )
 #myInts.exact_reference()
 
-nAtomPerImp = 2
+nAtomPerImp = 5
 impurityClusters = []
 
 if ( nAtomPerImp == 1 ):
@@ -170,7 +170,7 @@ if ( nAtomPerImp == 5 ):
         impurityClusters.append( impurities )
     myInts.TI_OK = True # Overwrite that translational invariance is OK
 
-isTranslationInvariant = True
+isTranslationInvariant = False
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant )
 theDMET.doselfconsistent()
 

@@ -23,11 +23,14 @@ Building and testing
 
 QC-DMET requires python, numpy, scipy,
 [libchemps2](https://github.com/SebWouters/CheMPS2), 
-[libcint](https://github.com/sunqm/libcint), and 
-[pyscf](https://github.com/sunqm/pyscf).
+[libcint](https://github.com/sunqm/libcint),
+[pyscf](https://github.com/sunqm/pyscf),
+[psi4](https://github.com/psi4/psi4public), and
+[psi4cc](https://github.com/SebWouters/psi4cc).
 
-The path to PyCheMPS2.so can be adjusted in [solver.py](src/solver.py) and
-the path to the folder in which pyscf is installed in 
+The path to PyCheMPS2.so can be adjusted in [chemps2.py](src/chemps2.py),
+the path to _psi4.so can be adjusted in [psi4cc.py](src/psi4cc.py), and
+the path to the folder in which pyscf is installed in
 [localintegrals.py](src/localintegrals.py).
 
 Start from the files test*.py.

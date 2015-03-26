@@ -35,16 +35,16 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
     orbirreps = np.zeros([ Norb ], dtype=ctypes.c_int)
     HamCheMPS2 = PyCheMPS2.PyHamiltonian(Norb, Group, orbirreps)
     HamCheMPS2.setEconst( CONST )
-    for cnt1 in range(0, Norb):
-        for cnt2 in range(0, Norb):
+    for cnt1 in range(Norb):
+        for cnt2 in range(Norb):
             HamCheMPS2.setTmat(cnt1, cnt2, FOCK[cnt1, cnt2])
-            for cnt3 in range(0, Norb):
-                for cnt4 in range(0, Norb):
+            for cnt3 in range(Norb):
+                for cnt4 in range(Norb):
                     HamCheMPS2.setVmat(cnt1, cnt2, cnt3, cnt4, TEI[cnt1, cnt3, cnt2, cnt4]) #From chemist to physics notation
     '''HamCheMPS2.save()
     exit(123)'''
     if (chempot_imp != 0.0):
-        for orb in range(0, Nimp):
+        for orb in range(Nimp):
             HamCheMPS2.setTmat(orb, orb, FOCK[orb, orb] - chempot_imp)
     
     # Killing output if necessary
@@ -95,10 +95,10 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
         EnergyCheMPS2 = theDMRG.Solve()
         theDMRG.calc2DMandCorrelations()
         TwoRDM = np.zeros( [Norb, Norb, Norb, Norb], dtype=ctypes.c_double )
-        for orb1 in range(0, Norb):
-            for orb2 in range(0, Norb):
-                for orb3 in range(0, Norb):
-                    for orb4 in range(0, Norb):
+        for orb1 in range(Norb):
+            for orb2 in range(Norb):
+                for orb3 in range(Norb):
+                    for orb4 in range(Norb):
                         TwoRDM[ orb1, orb3, orb2, orb4 ] = theDMRG.get2DMA( orb1, orb2, orb3, orb4 ) #From physics to chemistry notation
 
         # theDMRG.deleteStoredMPS()

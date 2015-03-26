@@ -4,4 +4,6 @@
 *.txt
 src/*pyc
 src/*~
+timer.dat
+
 

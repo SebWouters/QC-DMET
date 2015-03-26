@@ -19,24 +19,26 @@
 
 import localintegrals
 import qcdmethelper
-import solver
 import numpy as np
 from scipy import optimize
 import time
 
 class dmet:
 
-    def __init__( self, theInts, impurityClusters, isTranslationInvariant ):
+    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED' ):
     
         if ( isTranslationInvariant == True ):
             assert( theInts.TI_OK == True )
-    
+        
+        assert (( method == 'ED' ) or ( method == 'CC' ))
+        
         self.ints     = theInts
         self.helper   = qcdmethelper.qcdmethelper( self.ints )
         self.Norb     = self.ints.Norbs
         self.impClust = impurityClusters
         self.umat     = np.zeros([ self.Norb, self.Norb ], dtype=float)
         
+        self.method     = method
         self.doFock     = True
         self.doSCF      = False # Added for completeness. Better not to switch it on.
         self.TransInv   = isTranslationInvariant
@@ -131,7 +133,12 @@ class dmet:
             Nelec_in_imp = 2*numImpOrbs
             if ( Nelec_in_imp > self.ints.Nelec ):
                 Nelec_in_imp = self.ints.Nelec
-            IMP_energy, IMP_1RDM = solver.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
+            if ( self.method == 'ED' ):
+                import chemps2
+                IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
+            if ( self.method == 'CC' ):
+                import psi4cc
+                IMP_energy, IMP_1RDM = psi4cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
             

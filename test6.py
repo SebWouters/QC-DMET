@@ -66,7 +66,8 @@ active  = np.hstack(( pi_orbs[:13], pi_orbs[16] ))
 
 myInts = localintegrals.localintegrals( mf, active, 'boys' )
 myInts.molden( 'caffeine.molden' )
-#myInts.exact_reference()
+method = 'CC' # Method should be 'ED' or 'CC'
+myInts.exact_reference( method, False ) # No printing
 
 impurityClusters = []
 for cluster in range(len(active)):
@@ -74,7 +75,7 @@ for cluster in range(len(active)):
     impurities[ cluster ] = 1
     impurityClusters.append( impurities )
 isTranslationInvariant = False
-theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant )
+theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method )
 theDMET.doselfconsistent()
 
 

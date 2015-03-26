@@ -23,7 +23,6 @@ from pyscf import gto, scf, ao2mo, tools, future
 from pyscf.future import lo
 from pyscf.tools import molden, localizer
 import rhf
-import solver
 import numpy as np
 
 class localintegrals:
@@ -98,13 +97,19 @@ class localintegrals:
         print "RHF energy of mean-field input           =", self.fullEhf
         print "RHF energy based on self.active{OEI,ERI} =", newRHFener
         
-    def exact_reference( self ):
+    def exact_reference( self, method='ED', printstuff=True ):
+    
+        assert (( method == 'ED' ) or ( method == 'CC' ))
     
         print "Exact reference active space ( Norb, Nelec ) = (", self.Norbs, ",", self.Nelec, ")"
         chemical_pot = 0.0
-        printstuff   = True
-        GSenergy, GS_1DM = solver.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
-        print "Ground state energy =", GSenergy
+        if ( method == 'ED' ):
+            import chemps2
+            GSenergy, GS_1DM = chemps2.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
+        if ( method == 'CC' ):
+            import psi4cc
+            GSenergy, GS_1DM = psi4cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
+        print "Total",method,"ground state energy =", GSenergy
         
     def const( self ):
     

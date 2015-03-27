@@ -33,5 +33,5 @@ the path to _psi4.so can be adjusted in [psi4cc.py](src/psi4cc.py), and
 the path to the folder in which pyscf is installed in
 [localintegrals.py](src/localintegrals.py).
 
-Start from the files test*.py.
+Start from the files tests/test*.py.
 

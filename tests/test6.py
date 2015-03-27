@@ -18,7 +18,7 @@
 '''
 
 import sys
-sys.path.append('src')
+sys.path.append('../src')
 import localintegrals, dmet
 from pyscf import gto, scf, symm
 import numpy as np

@@ -1,9 +1,12 @@
 *pyc
 *~
-*.molden
+tests/*.molden
+tests/*.pyc
+tests/*~
+tests/*.txt
 *.txt
 src/*pyc
 src/*~
-timer.dat
+tests/timer.dat
 
 

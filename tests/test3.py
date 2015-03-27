@@ -18,23 +18,39 @@
 '''
 
 import sys
-sys.path.append('src')
+sys.path.append('../src')
 import localintegrals, dmet
 from pyscf import gto, scf
 import numpy as np
+import math as m
 
-b1 = 1.8
-nat = 30
+b1 = 1.2
+b2 = 1.2
+nat = 10
 mol = gto.Mole()
 mol.verbose = 0
 mol.atom = []
+
 r = b1/2 / np.sin(np.pi/nat)
 for i in range(nat):
     theta = i * (2*np.pi/nat)
-    mol.atom.append((1, (r*np.cos(theta),
-                         r*np.sin(theta), 0)))
+    mol.atom.append(('Li', (r*np.cos(theta), r*np.sin(theta), 0)))
 
-mol.basis = {'H': 'sto-3g',}
+mol.basis = {'Li': gto.basis.parse('''
+Li    S
+    642.4189200              0.0021426        
+     96.7985150              0.0162089        
+     22.0911210              0.0773156        
+      6.2010703              0.2457860        
+      1.9351177              0.4701890        
+      0.6367358              0.3454708        
+Li    S
+      2.3249184             -0.0350917
+      0.6324306             -0.1912328
+      0.0790534              1.0839878
+Li    S
+      0.0359620              1.0000000
+''')}
 mol.build()
 
 mf = scf.RHF( mol )
@@ -42,17 +58,16 @@ mf.verbose = 3
 mf.scf()
 
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
-myInts.molden( 'qiming_h30sz.molden' )
-#myInts.exact_reference()
+myInts.molden( 'qiming_li.molden' )
 
-#Imp size : 1 - 2 - 5 atoms
-atoms_per_imp = 2
+#Imp size : 1 Li
+atoms_per_imp = 1
 
 impurityClusters = []
 for cluster in range( nat / atoms_per_imp ):
     impurities = np.zeros( [ myInts.mol.nao_nr() ], dtype=int )
-    for orb in range(atoms_per_imp):
-        impurities[ atoms_per_imp*cluster + orb ] = 1
+    for orb in range(3*atoms_per_imp):
+        impurities[ 3*atoms_per_imp*cluster + orb ] = 1
     impurityClusters.append( impurities )
 isTranslationInvariant = True
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant )

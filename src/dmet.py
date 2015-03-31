@@ -221,6 +221,25 @@ class dmet:
         print "   Norm( gradient )            =", np.linalg.norm( gradient )
         self.doFock = not self.doFock #Back to original case
         
+    def hessian_eigenvalues( self, umatflat ):
+    
+        stepsize = 1e-7
+        gradient_reference = self.costfunction_derivative( umatflat )
+        hessian = np.zeros( [ len(umatflat), len(umatflat) ], dtype=float )
+        for cnt in range(len(umatflat)):
+            gradient = umatflat.copy()
+            gradient[ cnt ] += stepsize
+            gradient = self.costfunction_derivative( gradient )
+            hessian[ :, cnt ] = ( gradient - gradient_reference ) / stepsize
+        hessian = 0.5 * ( hessian + hessian.T )
+        eigvals, eigvecs = np.linalg.eigh( hessian )
+        idx = eigvals.argsort()
+        eigvals = eigvals[ idx ]
+        eigvecs = eigvecs[ :, idx ]
+        print "Hessian eigenvalues =", eigvals
+        print "Hessian 1st eigenvector =",eigvecs[:,0]
+        print "Hessian 2nd eigenvector =",eigvecs[:,1]
+        
     def flat2square( self, umatflat ):
     
         umatsquare = np.zeros( [ self.Norb, self.Norb ], dtype=float )
@@ -315,6 +334,7 @@ class dmet:
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
             print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
             #self.verify_gradient( self.square2flat( self.umat ) )
+            self.hessian_eigenvalues( self.square2flat( self.umat ) )
             
             # Possibly print the u-matrix / 1-RDM
             if self.print_u:
@@ -328,7 +348,25 @@ class dmet:
             print "   2-norm of difference old and new u-mat =", u_diff
             print "   2-norm of difference old and new 1-RDM =", rdm_diff
             print "******************************************************"
-            
+        #self.energy_gradient()
+        
+    def energy_gradient( self ):
+    
+        umat_orig = np.array( self.umat, copy=True )
+        self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+        energy_orig = self.energy
+        
+        stepsize = 1e-7
+        umat_flat = self.square2flat( self.umat )
+        gradient = np.zeros( [ len(umat_flat) ], dtype=float )
+        for cnt in range( len( umat_flat ) ):
+            self.umat = np.array( umat_orig, copy=True )
+            self.umat[cnt] += stepsize
+            self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+            gradient[cnt] = ( self.energy - energy_orig ) / stepsize
+        print "Energy gradient w.r.t. u-matrix =", gradient
+        self.umat = np.array( umat_orig, copy=True )
+        
     def print_umat( self ):
     
         print "The u-matrix ="

@@ -67,7 +67,12 @@ class localintegrals:
         self.activeCONST = self.mol.energy_nuc() + np.einsum( 'ij,ij->', self.frozenOEIao - 0.5*self.frozenJKao, self.frozenDMao )
         self.activeOEI   = np.dot( np.dot( self.ao2loc.T, self.frozenOEIao ), self.ao2loc )
         self.activeFOCK  = np.dot( np.dot( self.ao2loc.T, self.fullFOCKao  ), self.ao2loc )
-        self.activeERI   = ao2mo.outcore.full_iofree( self.mol, self.ao2loc, compact=False ).reshape(self.Norbs, self.Norbs, self.Norbs, self.Norbs)
+        if ( self.Norbs <= 150 ):
+            self.ERIinMEM  = True
+            self.activeERI = ao2mo.outcore.full_iofree( self.mol, self.ao2loc, compact=False ).reshape(self.Norbs, self.Norbs, self.Norbs, self.Norbs)
+        else:
+            self.ERIinMEM  = False
+            self.activeERI = None
         
         #self.debug_matrixelements()
         
@@ -89,9 +94,12 @@ class localintegrals:
         assert( self.Nelec % 2 == 0 )
         numPairs   = self.Nelec / 2
         DMguess    = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-        DMloc      = rhf.solve( self.activeOEI, self.activeERI, DMguess, numPairs )
+        if ( self.ERIinMEM == True ):
+            DMloc = rhf.solve_ERI( self.activeOEI, self.activeERI, DMguess, numPairs )
+        else:
+            DMloc = rhf.solve_JK( self.activeOEI, self.mol, self.ao2loc, DMguess, numPairs )
         newFOCKloc = self.loc_rhf_fock_bis( DMloc )
-        newRHFener = self.activeCONST + 0.5 * np.einsum( 'ij,ij->', DMloc, self.activeOEI + newFockloc )
+        newRHFener = self.activeCONST + 0.5 * np.einsum( 'ij,ij->', DMloc, self.activeOEI + newFOCKloc )
         print "2-norm difference of RDM(self.activeFOCK) and RDM(self.active{OEI,ERI})  =", np.linalg.norm( DMguess - DMloc )
         print "2-norm difference of self.activeFOCK and FOCK(RDM(self.active{OEI,ERI})) =", np.linalg.norm( self.activeFOCK - newFOCKloc )
         print "RHF energy of mean-field input           =", self.fullEhf
@@ -100,6 +108,9 @@ class localintegrals:
     def exact_reference( self, method='ED', printstuff=True ):
     
         assert (( method == 'ED' ) or ( method == 'CC' ))
+        if ( self.ERIinMEM == False ):
+            print "localintegrals::exact_reference : ERI of the localized orbitals are not stored in memory."
+        assert ( self.ERIinMEM == True )
     
         print "Exact reference active space ( Norb, Nelec ) = (", self.Norbs, ",", self.Nelec, ")"
         chemical_pot = 0.0
@@ -110,6 +121,7 @@ class localintegrals:
             import psi4cc
             GSenergy, GS_1DM = psi4cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
         print "Total",method,"ground state energy =", GSenergy
+        return GSenergy
         
     def const( self ):
     
@@ -124,12 +136,21 @@ class localintegrals:
         return self.activeFOCK
         
     def loc_rhf_fock_bis( self, DMloc ):
-
-        FOCKloc = self.activeOEI + np.einsum( 'ijkl,ij->kl', self.activeERI, DMloc ) - 0.5 * np.einsum( 'ijkl,ik->jl', self.activeERI, DMloc )
+    
+        if ( self.ERIinMEM == False ):
+            DM_ao = np.dot( np.dot( self.ao2loc, DMloc ), self.ao2loc.T )
+            JK_ao = scf.hf.get_veff( self.mol, DM_ao, 0, 0, 1 ) #Last 3 numbers: dm_last, vhf_last, hermi
+            JK_loc = np.dot( np.dot( self.ao2loc.T, JK_ao ), self.ao2loc )
+        else:
+            JK_loc = np.einsum( 'ijkl,ij->kl', self.activeERI, DMloc ) - 0.5 * np.einsum( 'ijkl,ik->jl', self.activeERI, DMloc )
+        FOCKloc = self.activeOEI + JK_loc
         return FOCKloc
 
     def loc_tei( self ):
     
+        if ( self.ERIinMEM == False ):
+            print "localintegrals::loc_tei : ERI of the localized orbitals are not stored in memory."
+        assert ( self.ERIinMEM == True )
         return self.activeERI
         
     def dmet_oei( self, loc2dmet, numActive ):
@@ -142,9 +163,13 @@ class localintegrals:
         FOCKdmet = np.dot( np.dot( loc2dmet[:,:numActive].T, self.loc_rhf_fock_bis( coreDMloc ) ), loc2dmet[:,:numActive] )
         return FOCKdmet
         
-    def dmet_tei( self, loc2dmet, numActive ):
+    def dmet_tei( self, loc2dmet, numAct ):
     
-        TEIdmet = ao2mo.incore.full( ao2mo.restore( 8, self.activeERI, self.Norbs ), loc2dmet[:,:numActive], compact=False ).reshape(numActive, numActive, numActive, numActive)
+        if ( self.ERIinMEM == False ):
+            transfo = np.dot( self.ao2loc, loc2dmet[:,:numAct] )
+            TEIdmet = ao2mo.outcore.full_iofree(self.mol, transfo, compact=False).reshape(numAct, numAct, numAct, numAct)
+        else:
+            TEIdmet = ao2mo.incore.full(ao2mo.restore(8, self.activeERI, self.Norbs), loc2dmet[:,:numAct], compact=False).reshape(numAct, numAct, numAct, numAct)
         return TEIdmet
         
         

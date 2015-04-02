@@ -27,16 +27,16 @@ mol = gto.Mole() # Benzene optimized with Psi4 B3LYP/cc-pVDZ
 mol.atom = '''
      H    0.000000000000     2.491406946734     0.000000000000
      C    0.000000000000     1.398696930758     0.000000000000
-     H    0.000000000000    -2.491406946734     0.000000000000
-     C    0.000000000000    -1.398696930758     0.000000000000
      H    2.157597486829     1.245660462400     0.000000000000
      C    1.211265339156     0.699329968382     0.000000000000
      H    2.157597486829    -1.245660462400     0.000000000000
      C    1.211265339156    -0.699329968382     0.000000000000
-     H   -2.157597486829     1.245660462400     0.000000000000
-     C   -1.211265339156     0.699329968382     0.000000000000
+     H    0.000000000000    -2.491406946734     0.000000000000
+     C    0.000000000000    -1.398696930758     0.000000000000
      H   -2.157597486829    -1.245660462400     0.000000000000
      C   -1.211265339156    -0.699329968382     0.000000000000
+     H   -2.157597486829     1.245660462400     0.000000000000
+     C   -1.211265339156     0.699329968382     0.000000000000
   '''
 mol.basis = '6-31g'
 mol.symmetry = 0
@@ -52,15 +52,20 @@ active = np.array([ 17, 20, 21, 22, 23, 30 ]) - 1
 
 myInts = localintegrals.localintegrals( mf, active, 'boys' )
 myInts.molden( 'benzene.molden' )
-myInts.exact_reference()
+method = 'ED' # Method should be 'ED' or 'CC'
+myInts.exact_reference( method, False ) # Exact diagonalization; no printing
+
+#Imp size : 1 - 2 orbitals
+orbs_per_imp = 2
 
 impurityClusters = []
-for cluster in range(len(active)):
+for cluster in range( len(active) / orbs_per_imp ):
     impurities = np.zeros( [ len(active) ], dtype=int )
-    impurities[ cluster ] = 1
+    for orb in range( orbs_per_imp ):
+        impurities[ orbs_per_imp * cluster + orb ] = 1
     impurityClusters.append( impurities )
 isTranslationInvariant = False
-theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant )
+theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method )
 theDMET.doselfconsistent()
 
 

@@ -50,7 +50,7 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
     eigvals, eigvecs = np.linalg.eigh( FOCKcopy )
     eigvecs = eigvecs[ :, eigvals.argsort() ]
     DMguess = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-    DMrhf   = rhf.solve( FOCKcopy, TEI, DMguess, numPairs )
+    DMrhf   = rhf.solve_ERI( FOCKcopy, TEI, DMguess, numPairs )
     Erhf    = CONST + np.einsum('ij,ij->', FOCKcopy, DMrhf)
     Erhf   += 0.5 * np.einsum('ijkl,ij,kl->', TEI, DMrhf, DMrhf) - 0.25 * np.einsum('ijkl,ik,jl->', TEI, DMrhf, DMrhf)
     
@@ -66,7 +66,7 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
     # Get the CC solution
     psi4cc = psi4.Solver()
     psi4cc.prepare('RHF', np.eye(Norb), FOCKcopy_mo, ao2mo.restore(4,TEI_mo,Norb), Nel)
-    Ecorrelation = psi4cc.energy('CCSD(T)')
+    Ecorrelation = psi4cc.energy('CCSD')
     OneRDM_mo, TwoRDM_mo = psi4cc.density() # 2-RDM is stored in physics notation!
     OneRDM_mo = OneRDM_mo + OneRDM_mo.T # Symmetrize the CC 1-RDM and adjust the missing factor of two!
     TwoRDM_mo = np.swapaxes( TwoRDM_mo, 1, 2 ) # Now TwoRDM is stored in chemists notation!

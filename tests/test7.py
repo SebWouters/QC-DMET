@@ -114,7 +114,6 @@ for atom in range( mol.natm ):
     if ( coeff_pr < 0.0 ):
         myInts.ao2loc[ :, atom ] = - myInts.ao2loc[ :, atom ]
 myInts.molden( 'buckyball.molden' )
-#myInts.exact_reference()
 
 nAtomPerImp = 5
 impurityClusters = []

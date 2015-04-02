@@ -36,7 +36,10 @@ class qcdmethelper:
             OEI   = self.locints.loc_rhf_fock() + umat
             DMloc = self.construct1RDM_base( OEI, numPairs )
             if ( doSCF == True ):
-                DMloc = rhf.solve( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, numPairs )
+                if ( self.locints.ERIinMEM == True ):
+                    DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, numPairs )
+                else:
+                    DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, numPairs )
         else:
             OEI   = self.locints.loc_oei() + umat
             DMloc = self.construct1RDM_base( OEI, numPairs )
@@ -51,7 +54,10 @@ class qcdmethelper:
             OEI = self.locints.loc_rhf_fock() + umat
             if ( doSCF == True ):
                 DMloc = self.construct1RDM_base( OEI, numPairs )
-                DMloc = rhf.solve( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, numPairs )
+                if ( self.locints.ERIinMEM == True ):
+                    DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, numPairs )
+                else:
+                    DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, numPairs )
                 OEI = self.locints.loc_rhf_fock_bis( DMloc ) + umat
         else:
             OEI = self.locints.loc_oei() + umat

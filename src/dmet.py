@@ -21,7 +21,6 @@ import localintegrals
 import qcdmethelper
 import numpy as np
 from scipy import optimize
-import time
 
 class dmet:
 
@@ -319,7 +318,7 @@ class dmet:
             jumpsquare = 0
             jumpflat   = 0
             for count in range( len( self.imp_size ) ):
-                localsize = self.imp_size[ 0 ]
+                localsize = self.imp_size[ count ]
                 iterator = 0
                 for row in range(localsize):
                     for col in range(row, localsize):
@@ -422,9 +421,10 @@ class dmet:
             print "   2-norm of difference old and new 1-RDM =", rdm_diff
             print "******************************************************"
             
-        #gradient = self.energy_gradient( self.umat )
+        #gradient = self.energy_gradient( self.square2flat(self.umat) )
         #print "Energy gradient w.r.t. u-matrix =", gradient
         #self.energy_hessian()
+        #result = optimize.minimize( self.energy_costfunction, self.square2flat( self.umat ), options={'disp': False} )
         return self.energy
         
     def energy_hessian( self ):
@@ -435,7 +435,7 @@ class dmet:
         for cnt in range( len(umat_flat) ):
             umat_flat = self.square2flat( self.umat )
             umat_flat[ cnt ] += stepsize
-            hessian[ :, cnt ] = self.energy_gradient( self.flat2square( umat_flat ) )
+            hessian[ :, cnt ] = self.energy_gradient( umat_flat )
         hessian = 0.5 * ( hessian + hessian.T )
         eigvals, eigvecs = np.linalg.eigh( hessian )
         idx = eigvals.argsort()
@@ -443,24 +443,26 @@ class dmet:
         eigvecs = eigvecs[ :, idx ]
         print "Energy hessian eigenvalues =", eigvals
         
-    def energy_gradient( self, umat_val ):
+    def energy_gradient( self, umat_flat ):
     
-        umat_orig = np.array( self.umat, copy=True )
-        self.umat = np.array( umat_val, copy=True )
-        self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
-        energy_orig = self.energy
-        
+        energy_orig = self.energy_costfunction( umat_flat )
         stepsize = 1e-6
-        umat_flat = self.square2flat( umat_val )
         gradient = np.zeros( [ len(umat_flat) ], dtype=float )
         for cnt in range( len( umat_flat ) ):
-            umat_flat = self.square2flat( umat_val )
-            umat_flat[cnt] += stepsize
-            self.umat = self.flat2square( umat_flat )
-            self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
-            gradient[cnt] = ( self.energy - energy_orig ) / stepsize
-        self.umat = np.array( umat_orig, copy=True )
+            umat_flat_bis = np.array( umat_flat, copy=True )
+            umat_flat_bis[cnt] += stepsize
+            energy_new = self.energy_costfunction( self, umat_flat_bis )
+            gradient[cnt] = ( energy_new - energy_orig ) / stepsize
         return gradient
+        
+    def energy_costfunction( self, umat_flat ):
+    
+        umat_orig = np.array( self.umat, copy=True )
+        self.umat = self.flat2square( umat_flat )
+        self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+        self.umat = np.array( umat_orig, copy=True )
+        print "dmet::energy_costfunction : Current value of the energy =", self.energy
+        return self.energy
         
     def print_umat( self ):
     

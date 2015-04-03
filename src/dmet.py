@@ -41,17 +41,11 @@ class dmet:
         self.doFock     = True # Do not dare to change this
         self.doSCF      = False
         self.TransInv   = isTranslationInvariant
-        self.leastsq    = False # Upon setting to True all hell will break loose. Beware!
+        self.leastsq    = True
         self.fitImpBath = True
         
         self.print_u    = True
         self.print_rdm  = True
-        
-        '''self.densityfit = False
-        if ( self.densityfit == True ):
-            self.EDRDMeigvecs = []
-            assert( self.fitImpBath == False )
-            assert( self.leastsq == False )'''
         
         self.testclusters()
         
@@ -117,8 +111,6 @@ class dmet:
         self.energy   = 0.0
         self.imp_1RDM = []
         self.dmetOrbs = []
-        '''if ( self.densityfit == True ):
-            self.EDRDMeigvecs = []'''
         
         maxiter = len( self.impClust )
         if ( self.TransInv == True ):
@@ -148,10 +140,6 @@ class dmet:
                 IMP_energy, IMP_1RDM = psi4cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
-            '''if ( self.densityfit == True ):
-                eigvals, eigvecs = np.linalg.eigh( IMP_1RDM[:numImpOrbs,:numImpOrbs] )
-                eigvecs = eigvecs[ :, eigvals.argsort() ]
-                self.EDRDMeigvecs.append( eigvecs )'''
             
         Nelectrons = 0.0
         for counter in range( maxiter ):
@@ -181,7 +169,16 @@ class dmet:
     
         newumatsquare = self.flat2square( newumatflat )
         OneRDM = self.helper.construct1RDM_loc( self.doFock, self.doSCF, newumatsquare )
-        errors = []
+        
+        thesize = 0
+        for item in self.imp_size:
+            if ( self.fitImpBath == True ):
+                thesize += 4 * item * item
+            else:
+                thesize += item * item
+        errors = np.zeros( [ thesize ], dtype=float )
+        
+        jump = 0
         for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
             if ( self.fitImpBath == True ):
                 mf_1RDM = np.dot( np.dot( self.dmetOrbs[ count ].T, OneRDM ), self.dmetOrbs[ count ] )
@@ -190,9 +187,10 @@ class dmet:
                 mf_1RDM = (OneRDM[:,self.impClust[count]==1])[self.impClust[count]==1,:]
                 ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
             theerror = mf_1RDM - ed_1RDM
-            errors.append( theerror )
-        errors = np.array( errors )
-        errors = np.reshape( errors, errors.shape[0] * errors.shape[1] * errors.shape[2], order='F' )
+            squaresize = theerror.shape[0] * theerror.shape[1]
+            errors[ jump : jump + squaresize ] = np.reshape( theerror, squaresize, order='F' )
+            jump += squaresize
+        assert ( jump == thesize )
         return errors
         
     def rdm_differences_derivative( self, newumatflat ):
@@ -201,17 +199,26 @@ class dmet:
         OneRDM = self.helper.construct1RDM_loc( self.doFock, self.doSCF, newumatsquare )
         RDMderivs = self.helper.construct1RDM_loc_response( self.doFock, self.doSCF, newumatsquare, self.list_H1 )
         
+        thesize = 0
+        for item in self.imp_size:
+            if ( self.fitImpBath == True ):
+                thesize += 4 * item * item
+            else:
+                thesize += item * item
+        
         gradient = []
         for countgr in range( len( self.list_H1 ) ):
-            error_deriv = []
+            error_deriv = np.zeros( [ thesize ], dtype=float )
+            jump = 0
             for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
                 if ( self.fitImpBath == True ):
                     local_derivative = np.dot( np.dot( self.dmetOrbs[ count ].T, RDMderivs[ countgr ] ), self.dmetOrbs[ count ] )
                 else:
                     local_derivative = ((RDMderivs[ countgr ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
-                error_deriv.append( local_derivative )
-            error_deriv = np.array( error_deriv )
-            error_deriv = np.reshape( error_deriv, error_deriv.shape[0] * error_deriv.shape[1] * error_deriv.shape[2], order='F' )
+                squaresize = local_derivative.shape[0] * local_derivative.shape[1]
+                error_deriv[ jump : jump + squaresize ] = np.reshape( local_derivative, squaresize, order='F' )
+                jump += squaresize
+            assert ( jump == thesize )
             gradient.append( error_deriv )
         gradient = np.array( gradient ).T
         return gradient
@@ -251,56 +258,7 @@ class dmet:
         print "Hessian 1st eigenvector =",eigvecs[:,0]
         print "Hessian 2nd eigenvector =",eigvecs[:,1]
         
-    '''def density_costfunction( self, umatdiag ):
-    
-        umatsquare = self.diag2square( umatdiag )
-        OneRDM = self.helper.construct1RDM_loc( self.doFock, self.doSCF, umatsquare )
-        
-        errors = []
-        for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
-            mf_1RDM = (OneRDM[:,self.impClust[count]==1])[self.impClust[count]==1,:]
-            ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
-            ed_dens = np.diag(np.dot(np.dot(self.EDRDMeigvecs[count].T, ed_1RDM), self.EDRDMeigvecs[count]))
-            mf_dens = np.diag(np.dot(np.dot(self.EDRDMeigvecs[count].T, mf_1RDM), self.EDRDMeigvecs[count]))
-            assert( np.linalg.norm( np.diag( np.diag( ed_dens ) ) - ed_dens ) < 1e-10 )
-            errors.append( mf_dens - ed_dens )
-        errors = np.array( errors )
-        costfunction = np.linalg.norm( errors )**2
-        return costfunction
-        
-    def diag2square( self, umatdiag ):
-    
-        umatsquare = np.zeros([ self.Norb, self.Norb ], dtype=float)
-        jump = 0
-        for count in range( len( self.imp_size ) ):
-            localsize = self.imp_size[ count ]
-            umatsquare[jump:jump+localsize,jump:jump+localsize] = np.dot(np.dot(self.EDRDMeigvecs[count], np.diag(umatdiag[jump:jump+localsize])), self.EDRDMeigvecs[count].T)
-            jump += localsize
-        if ( self.TransInv == True ):
-            localsize = self.imp_size[ 0 ]
-            for jumper in range( self.Norb / localsize ):
-                jump = localsize*jumper
-                umatsquare[jump:jump+localsize,jump:jump+localsize] = umatsquare[:localsize,:localsize]
-        return umatsquare
-        
-    def square2diag( self, umatsquare ):
-    
-        totalsize = self.imp_size[0]
-        for cnt in range(1, len(self.imp_size)):
-            totalsize += self.imp_size[cnt]
-        umatdiag = np.zeros([totalsize], dtype=float)
-        jump = 0
-        for cnt in range( len( self.imp_size ) ):
-            localsize = self.imp_size[cnt]
-            umatdiag[jump:jump+localsize] = np.diag(np.dot(np.dot(self.EDRDMeigvecs[cnt].T, umatsquare[jump:jump+localsize,jump:jump+localsize]), self.EDRDMeigvecs[cnt]))
-            jump += localsize
-        assert( jump == totalsize )
-        return umatdiag'''
-        
     def flat2square( self, umatflat ):
-    
-        '''if ( self.densityfit == True ):
-            return self.diag2square( umatflat )'''
     
         umatsquare = np.zeros( [ self.Norb, self.Norb ], dtype=float )
         
@@ -337,9 +295,6 @@ class dmet:
         return umatsquare
             
     def square2flat( self, umatsquare ):
-    
-        '''if ( self.densityfit == True ):
-            return self.square2diag( umatsquare )'''
     
         umatflat = []
         jumpsquare = 0
@@ -381,7 +336,6 @@ class dmet:
             rdm_old = self.transform_ed_1rdm()
             
             # Find the chemical potential for the correlated impurity problem
-            #self.mu_imp = optimize.brentq( self.numeleccostfunction, self.mu_imp - 10*u_diff , self.mu_imp + 10*u_diff )
             self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
             print "   Chemical potential =", self.mu_imp
             print "   Energy =", self.energy
@@ -390,20 +344,12 @@ class dmet:
             # Solve for the u-matrix
             umatflat = self.square2flat( self.umat )
             if ( self.leastsq == True ):
-                result = optimize.leastsq( self.rdm_differences, umatflat, Dfun=self.rdm_differences_derivative )
+                result = optimize.leastsq( self.rdm_differences, umatflat, Dfun=self.rdm_differences_derivative, factor=0.1 )
                 self.umat = self.flat2square( result[ 0 ] )
             else:
-                '''if ( self.densityfit == True ):
-                    result = optimize.minimize( self.density_costfunction, umatflat, options={'disp': False} )
-                else:
-                    result = optimize.minimize( self.costfunction, umatflat, jac=self.costfunction_derivative, options={'disp': False} )'''
                 result = optimize.minimize( self.costfunction, umatflat, jac=self.costfunction_derivative, options={'disp': False} )
                 self.umat = self.flat2square( result.x )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
-            '''if ( self.densityfit == True ):
-                print "   Cost function after convergence =", self.density_costfunction( self.square2flat( self.umat ) )
-            else:
-                print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )'''
             print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
             #self.verify_gradient( self.square2flat( self.umat ) )
             #self.hessian_eigenvalues( self.square2flat( self.umat ) )
@@ -421,47 +367,6 @@ class dmet:
             print "   2-norm of difference old and new 1-RDM =", rdm_diff
             print "******************************************************"
             
-        #gradient = self.energy_gradient( self.square2flat(self.umat) )
-        #print "Energy gradient w.r.t. u-matrix =", gradient
-        #self.energy_hessian()
-        #result = optimize.minimize( self.energy_costfunction, self.square2flat( self.umat ), options={'disp': False} )
-        return self.energy
-        
-    def energy_hessian( self ):
-    
-        stepsize = 1e-6
-        umat_flat = self.square2flat( self.umat )
-        hessian = np.zeros([ len(umat_flat), len(umat_flat) ], dtype=float)
-        for cnt in range( len(umat_flat) ):
-            umat_flat = self.square2flat( self.umat )
-            umat_flat[ cnt ] += stepsize
-            hessian[ :, cnt ] = self.energy_gradient( umat_flat )
-        hessian = 0.5 * ( hessian + hessian.T )
-        eigvals, eigvecs = np.linalg.eigh( hessian )
-        idx = eigvals.argsort()
-        eigvals = eigvals[ idx ]
-        eigvecs = eigvecs[ :, idx ]
-        print "Energy hessian eigenvalues =", eigvals
-        
-    def energy_gradient( self, umat_flat ):
-    
-        energy_orig = self.energy_costfunction( umat_flat )
-        stepsize = 1e-6
-        gradient = np.zeros( [ len(umat_flat) ], dtype=float )
-        for cnt in range( len( umat_flat ) ):
-            umat_flat_bis = np.array( umat_flat, copy=True )
-            umat_flat_bis[cnt] += stepsize
-            energy_new = self.energy_costfunction( self, umat_flat_bis )
-            gradient[cnt] = ( energy_new - energy_orig ) / stepsize
-        return gradient
-        
-    def energy_costfunction( self, umat_flat ):
-    
-        umat_orig = np.array( self.umat, copy=True )
-        self.umat = self.flat2square( umat_flat )
-        self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
-        self.umat = np.array( umat_orig, copy=True )
-        print "dmet::energy_costfunction : Current value of the energy =", self.energy
         return self.energy
         
     def print_umat( self ):

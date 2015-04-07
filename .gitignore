@@ -8,5 +8,6 @@ tests/*.txt
 src/*pyc
 src/*~
 tests/timer.dat
-
+tests/*.profile
+tests/*.lprof
 

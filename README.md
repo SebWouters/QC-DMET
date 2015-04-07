@@ -35,3 +35,24 @@ the path to the folder in which pyscf is installed in
 
 Start from the files tests/test*.py.
 
+Performance testing
+-------------------
+
+### 1. Find the most costly functions:
+
+    > python -m cProfile -o testx.profile testx.py
+    > python -m pstats testx.profile
+    >>> sort cumulative
+    >>> stats
+
+### 2. Find what makes them most costly:
+
+Place just before the function you want to profile @profile:
+
+    @profile
+    def construct1RDM_loc_response( self, doSCF, umat, list_H1 ):
+
+And then use [line_profiler](https://github.com/rkern/line_profiler):
+
+    > kernprof -lv testx.py
+

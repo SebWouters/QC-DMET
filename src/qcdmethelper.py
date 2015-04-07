@@ -26,68 +26,61 @@ class qcdmethelper:
     def __init__( self, theLocalIntegrals ):
     
         self.locints = theLocalIntegrals
-        
-    def construct1RDM_loc( self, doFock, doSCF, umat ):
-    
         assert( self.locints.Nelec % 2 == 0 )
-        numPairs = self.locints.Nelec / 2
+        self.numPairs = self.locints.Nelec / 2
+
+    def construct1RDM_loc( self, doSCF, umat ):
         
-        if ( doFock == True ):
-            OEI   = self.locints.loc_rhf_fock() + umat
-            DMloc = self.construct1RDM_base( OEI, numPairs )
-            if ( doSCF == True ):
-                if ( self.locints.ERIinMEM == True ):
-                    DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, numPairs )
-                else:
-                    DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, numPairs )
-        else:
-            OEI   = self.locints.loc_oei() + umat
-            DMloc = self.construct1RDM_base( OEI, numPairs )
+        OEI   = self.locints.loc_rhf_fock() + umat
+        DMloc = self.construct1RDM_base( OEI, self.numPairs )
+        if ( doSCF == True ):
+            if ( self.locints.ERIinMEM == True ):
+                DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, self.numPairs )
+            else:
+                DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
         return DMloc
 
-    def construct1RDM_loc_response( self, doFock, doSCF, umat, list_H1 ):
-
-        assert( self.locints.Nelec % 2 == 0 )
-        numPairs = self.locints.Nelec / 2
-
-        if ( doFock == True ):
-            OEI = self.locints.loc_rhf_fock() + umat
-            if ( doSCF == True ):
-                DMloc = self.construct1RDM_base( OEI, numPairs )
-                if ( self.locints.ERIinMEM == True ):
-                    DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, numPairs )
-                else:
-                    DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, numPairs )
-                OEI = self.locints.loc_rhf_fock_bis( DMloc ) + umat
-        else:
-            OEI = self.locints.loc_oei() + umat
+    def construct1RDM_loc_response( self, doSCF, umat, list_H1 ):
+        
+        OEI = self.locints.loc_rhf_fock() + umat
+        if ( doSCF == True ):
+            DMloc = self.construct1RDM_base( OEI, self.numPairs )
+            if ( self.locints.ERIinMEM == True ):
+                DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, self.numPairs )
+            else:
+                DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
+            OEI = self.locints.loc_rhf_fock_bis( DMloc ) + umat
 
         eigenvals, eigenvecs = np.linalg.eigh( OEI ) # Does not guarantee sorted eigenvectors!
         idx = eigenvals.argsort()
         eigenvals = eigenvals[idx]
         eigenvecs = eigenvecs[:,idx] # Sorted eigenvalues and eigenvectors!
-        OCCUPIED  = eigenvecs[ : , :numPairs ]
-        VIRTUAL   = eigenvecs[ : , numPairs: ]
+        OCCUPIED  = eigenvecs[ : , :self.numPairs ]
+        VIRTUAL   = eigenvecs[ : , self.numPairs: ]
+        
+        if ( doSCF == False ):
+            DMloc = 2 * np.dot( OCCUPIED, OCCUPIED.T )
+            
+        # TEMP[ virt , occ ] = -1.0 / ( epsilon_virt - epsilon_occ )
+        TEMP = -1.0 / ( eigenvals[ self.numPairs: ].reshape(-1,1) - eigenvals[ :self.numPairs ].reshape(-1) )
         
         RDMderivs = []
         for H1 in list_H1:
-            WORK = np.dot( np.dot( VIRTUAL.T , H1 ) , OCCUPIED )
-            for virt in range( WORK.shape[0] ):
-                for occ in range( WORK.shape[1] ):
-                    WORK[ virt, occ ] = - WORK[ virt, occ ] / ( eigenvals[ numPairs + virt ] - eigenvals[ occ ] )
+            WORK = np.dot( VIRTUAL.T , np.dot( H1 , OCCUPIED ) )
+            WORK = np.multiply( WORK, TEMP )
             C_1 = np.dot( VIRTUAL, WORK )
             deriv = 2 * np.dot( OCCUPIED, C_1.T )
             deriv = deriv + deriv.T
             RDMderivs.append(deriv)
-        return RDMderivs
+        return ( DMloc, RDMderivs )
         
-    def construct1RDM_base( self, OEI, numPairs ):
+    def construct1RDM_base( self, OEI, myNumPairs ):
     
         eigenvals, eigenvecs = np.linalg.eigh( OEI ) # Does not guarantee sorted eigenvectors!
         idx = eigenvals.argsort()
         eigenvals = eigenvals[idx]
         eigenvecs = eigenvecs[:,idx]
-        OneDM = 2 * np.dot( eigenvecs[:,:numPairs] , eigenvecs[:,:numPairs].T )
+        OneDM = 2 * np.dot( eigenvecs[:,:myNumPairs] , eigenvecs[:,:myNumPairs].T )
         return OneDM
         
     def constructbath( self, OneDM, impurityOrbs ):

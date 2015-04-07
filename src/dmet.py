@@ -38,11 +38,10 @@ class dmet:
         self.umat     = np.zeros([ self.Norb, self.Norb ], dtype=float)
         
         self.method     = method
-        self.doFock     = True # Do not dare to change this
         self.doSCF      = False
         self.TransInv   = isTranslationInvariant
         self.leastsq    = True
-        self.fitImpBath = True
+        self.fitImpBath = True # Fitting the impurity plus bath is **way** more stable
         
         self.print_u    = True
         self.print_rdm  = True
@@ -55,6 +54,7 @@ class dmet:
         self.imp_size = self.make_imp_size()
         self.mu_imp   = 0.0
         self.list_H1  = self.makelist_H1()
+        self.mask     = self.make_mask()
         
         np.set_printoptions(precision=3, linewidth=200)
         
@@ -105,9 +105,21 @@ class dmet:
                 jumpsquare += localsize
         return theH1
         
+    def make_mask( self ):
+    
+        themask = np.zeros([self.Norb,self.Norb], dtype=bool)
+        jump = 0
+        for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
+            localsize = self.imp_size[ count ]
+            for row in range( localsize ):
+                for col in range( row, localsize ):
+                    themask[ jump + row, jump + col ] = True
+            jump += localsize
+        return themask
+        
     def doexact( self, chempot_imp=0.0 ):
     
-        OneRDM = self.helper.construct1RDM_loc( self.doFock, self.doSCF, self.umat )
+        OneRDM = self.helper.construct1RDM_loc( self.doSCF, self.umat )
         self.energy   = 0.0
         self.imp_1RDM = []
         self.dmetOrbs = []
@@ -164,11 +176,11 @@ class dmet:
         for counter in range( len( self.list_H1 ) ):
             thegradient[ counter ] = 2 * np.sum( np.multiply( error_derivs[ : , counter ], errors ) )
         return thegradient
-        
+    
     def rdm_differences( self, newumatflat ):
     
         newumatsquare = self.flat2square( newumatflat )
-        OneRDM = self.helper.construct1RDM_loc( self.doFock, self.doSCF, newumatsquare )
+        OneRDM = self.helper.construct1RDM_loc( self.doSCF, newumatsquare )
         
         thesize = 0
         for item in self.imp_size:
@@ -192,12 +204,11 @@ class dmet:
             jump += squaresize
         assert ( jump == thesize )
         return errors
-        
+    
     def rdm_differences_derivative( self, newumatflat ):
         
         newumatsquare = self.flat2square( newumatflat )
-        OneRDM = self.helper.construct1RDM_loc( self.doFock, self.doSCF, newumatsquare )
-        RDMderivs = self.helper.construct1RDM_loc_response( self.doFock, self.doSCF, newumatsquare, self.list_H1 )
+        OneRDM, RDMderivs = self.helper.construct1RDM_loc_response( self.doSCF, newumatsquare, self.list_H1 )
         
         thesize = 0
         for item in self.imp_size:
@@ -225,7 +236,6 @@ class dmet:
         
     def verify_gradient( self, umatflat ):
     
-        self.doFock = not self.doFock #Invert to get a large gradient
         gradient = self.costfunction_derivative( umatflat )
         cost_reference = self.costfunction( umatflat )
         gradientbis = np.zeros( [len(gradient)], dtype=float )
@@ -237,7 +247,6 @@ class dmet:
             gradientbis[ cnt ] = ( costbis - cost_reference ) / stepsize
         print "   Norm( gradient difference ) =", np.linalg.norm( gradient - gradientbis )
         print "   Norm( gradient )            =", np.linalg.norm( gradient )
-        self.doFock = not self.doFock #Back to original case
         
     def hessian_eigenvalues( self, umatflat ):
     
@@ -261,31 +270,14 @@ class dmet:
     def flat2square( self, umatflat ):
     
         umatsquare = np.zeros( [ self.Norb, self.Norb ], dtype=float )
-        
+        umatsquare[ self.mask ] = umatflat
+        umatsquare = umatsquare.T
+        umatsquare[ self.mask ] = umatflat
         if ( self.TransInv == True ):
-            localsize = self.imp_size[ 0 ]
-            iterator = 0
-            for row in range(localsize):
-                for col in range(row, localsize):
-                    for jumper in range( self.Norb / localsize ):
-                        jumpsquare = localsize * jumper
-                        umatsquare[ jumpsquare + row, jumpsquare + col ] = umatflat[ iterator ]
-                        umatsquare[ jumpsquare + col, jumpsquare + row ] = umatsquare[ jumpsquare + row, jumpsquare + col ]
-                    iterator += 1
-        else:
-            jumpsquare = 0
-            jumpflat   = 0
-            for count in range( len( self.imp_size ) ):
-                localsize = self.imp_size[ count ]
-                iterator = 0
-                for row in range(localsize):
-                    for col in range(row, localsize):
-                        umatsquare[ jumpsquare + row, jumpsquare + col ] = umatflat[ jumpflat + iterator ]
-                        umatsquare[ jumpsquare + col, jumpsquare + row ] = umatsquare[ jumpsquare + row, jumpsquare + col ]
-                        iterator += 1
-                jumpsquare += localsize
-                jumpflat += iterator
-        
+            size = self.imp_size[ 0 ]
+            for it in range( 1, self.Norb / size ):
+                umatsquare[ it*size:(it+1)*size, it*size:(it+1)*size ] = umatsquare[ 0:size, 0:size ]
+                
         '''if True:
             umatsquare_bis = np.zeros( [ self.Norb, self.Norb ], dtype=float )
             for cnt in range( len( umatflat ) ):
@@ -293,19 +285,6 @@ class dmet:
             print "Verification flat2square = ", np.linalg.norm( umatsquare - umatsquare_bis )'''
         
         return umatsquare
-            
-    def square2flat( self, umatsquare ):
-    
-        umatflat = []
-        jumpsquare = 0
-        for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
-            localsize = self.imp_size[ count ]
-            for row in range(localsize):
-                for col in range(row, localsize):
-                    umatflat.append( umatsquare[ jumpsquare + row, jumpsquare + col ] )
-            jumpsquare += localsize
-        umatflat = np.array( umatflat )
-        return umatflat
         
     def numeleccostfunction( self, chempot_imp ):
         
@@ -321,13 +300,6 @@ class dmet:
         convergence_threshold = 1e-5
         print "RHF energy =", self.ints.fullEhf
         
-        # Make sure that the initial bath orbitals are calculated based on the Fock matrix
-        #    If self.doFock : self.umat = 0
-        #    If not self.doFock : self.umat = FOCK - OEI
-        #    JK matrix elements are small between different impurities as they are proportional to orbital overlaps between different impurities
-        if ( np.linalg.norm( self.umat ) == 0.0 ) and ( not self.doFock ):
-            self.umat = self.flat2square( self.square2flat( self.ints.loc_rhf_fock() - self.ints.loc_oei() ) )
-        
         while ( u_diff > convergence_threshold ):
         
             iteration += 1
@@ -339,20 +311,19 @@ class dmet:
             self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
             print "   Chemical potential =", self.mu_imp
             print "   Energy =", self.energy
-            #self.hessian_eigenvalues( self.square2flat( self.umat ) )
+            #self.verify_gradient( self.umat[ self.mask ] ) # Only works for self.doSCF == False!!
+            #self.hessian_eigenvalues( self.umat[ self.mask ] )
             
             # Solve for the u-matrix
-            umatflat = self.square2flat( self.umat )
             if ( self.leastsq == True ):
-                result = optimize.leastsq( self.rdm_differences, umatflat, Dfun=self.rdm_differences_derivative, factor=0.1 )
+                result = optimize.leastsq( self.rdm_differences, self.umat[ self.mask ], Dfun=self.rdm_differences_derivative, factor=0.1 )
                 self.umat = self.flat2square( result[ 0 ] )
             else:
-                result = optimize.minimize( self.costfunction, umatflat, jac=self.costfunction_derivative, options={'disp': False} )
+                result = optimize.minimize( self.costfunction, self.umat[ self.mask ], jac=self.costfunction_derivative, options={'disp': False} )
                 self.umat = self.flat2square( result.x )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
-            print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
-            #self.verify_gradient( self.square2flat( self.umat ) )
-            #self.hessian_eigenvalues( self.square2flat( self.umat ) )
+            print "   Cost function after convergence =", self.costfunction( self.umat[ self.mask ] )
+            #self.hessian_eigenvalues( self.umat[ self.mask ] )
             
             # Possibly print the u-matrix / 1-RDM
             if self.print_u:

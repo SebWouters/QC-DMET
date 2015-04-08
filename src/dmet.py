@@ -32,7 +32,6 @@ class dmet:
         assert (( method == 'ED' ) or ( method == 'CC' ))
         
         self.ints     = theInts
-        self.helper   = qcdmethelper.qcdmethelper( self.ints )
         self.Norb     = self.ints.Norbs
         self.impClust = impurityClusters
         self.umat     = np.zeros([ self.Norb, self.Norb ], dtype=float)
@@ -53,8 +52,8 @@ class dmet:
         self.dmetOrbs = []
         self.imp_size = self.make_imp_size()
         self.mu_imp   = 0.0
-        self.list_H1  = self.makelist_H1()
         self.mask     = self.make_mask()
+        self.helper   = qcdmethelper.qcdmethelper( self.ints, self.makelist_H1() )
         
         np.set_printoptions(precision=3, linewidth=200)
         
@@ -172,8 +171,8 @@ class dmet:
         
         errors = self.rdm_differences( newumatflat )
         error_derivs = self.rdm_differences_derivative( newumatflat )
-        thegradient = np.zeros([ len( self.list_H1 ) ], dtype=float)
-        for counter in range( len( self.list_H1 ) ):
+        thegradient = np.zeros([ len( newumatflat ) ], dtype=float)
+        for counter in range( len( newumatflat ) ):
             thegradient[ counter ] = 2 * np.sum( np.multiply( error_derivs[ : , counter ], errors ) )
         return thegradient
     
@@ -208,7 +207,7 @@ class dmet:
     def rdm_differences_derivative( self, newumatflat ):
         
         newumatsquare = self.flat2square( newumatflat )
-        OneRDM, RDMderivs = self.helper.construct1RDM_loc_response( self.doSCF, newumatsquare, self.list_H1 )
+        OneRDM, RDMderivs = self.helper.construct1RDM_loc_response( self.doSCF, newumatsquare )
         
         thesize = 0
         for item in self.imp_size:
@@ -218,14 +217,14 @@ class dmet:
                 thesize += item * item
         
         gradient = []
-        for countgr in range( len( self.list_H1 ) ):
+        for countgr in range( len( newumatflat ) ):
             error_deriv = np.zeros( [ thesize ], dtype=float )
             jump = 0
             for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
                 if ( self.fitImpBath == True ):
-                    local_derivative = np.dot( np.dot( self.dmetOrbs[ count ].T, RDMderivs[ countgr ] ), self.dmetOrbs[ count ] )
+                    local_derivative = np.dot( np.dot( self.dmetOrbs[ count ].T, RDMderivs[ countgr, :, : ] ), self.dmetOrbs[ count ] )
                 else:
-                    local_derivative = ((RDMderivs[ countgr ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
+                    local_derivative = ((RDMderivs[ countgr, :, : ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
                 squaresize = local_derivative.shape[0] * local_derivative.shape[1]
                 error_deriv[ jump : jump + squaresize ] = np.reshape( local_derivative, squaresize, order='F' )
                 jump += squaresize
@@ -281,7 +280,7 @@ class dmet:
         '''if True:
             umatsquare_bis = np.zeros( [ self.Norb, self.Norb ], dtype=float )
             for cnt in range( len( umatflat ) ):
-                umatsquare_bis += umatflat[ cnt ] * self.list_H1[ cnt ]
+                umatsquare_bis += umatflat[ cnt ] * self.helper.list_H1[ cnt ]
             print "Verification flat2square = ", np.linalg.norm( umatsquare - umatsquare_bis )'''
         
         return umatsquare

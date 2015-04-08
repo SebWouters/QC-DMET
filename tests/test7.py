@@ -123,7 +123,6 @@ if ( nAtomPerImp == 1 ):
         impurities = np.zeros( [ len(active) ], dtype=int )
         impurities[ cluster ] = 1
         impurityClusters.append( impurities )
-    myInts.TI_OK = True # Overwrite that translational invariance is OK
 if ( nAtomPerImp == 2 ):
     lowbound = 2.641 - 0.01
     upbound  = 2.641 + 0.01
@@ -143,21 +142,20 @@ if ( nAtomPerImp == 2 ):
             impurityClusters.append( impurities )
             notused[ atom   ] = 0
             notused[ friend ] = 0
-    myInts.TI_OK = True # Overwrite that translational invariance is OK
 if ( nAtomPerImp == 5 ):
     clusters = np.zeros( [ 12, nAtomPerImp ], dtype=int )
-    clusters[0, :] = np.array([ 16, 57, 54, 50, 59 ]) - 1 #OK
-    clusters[1, :] = np.array([ 52, 42, 32, 20, 60 ]) - 1 #OK
-    clusters[2, :] = np.array([ 15, 19, 13, 11, 17 ]) - 1 #OK
-    clusters[3, :] = np.array([ 56, 58, 18, 26, 10 ]) - 1 #OK
-    clusters[4, :] = np.array([ 8,  46, 48, 53, 55 ]) - 1 #OK
-    clusters[5, :] = np.array([ 1,  3,  5,  7,  9  ]) - 1 #OK
-    clusters[6, :] = np.array([ 25, 12, 21, 23, 2  ]) - 1 #OK
-    clusters[7, :] = np.array([ 31, 29, 27, 22, 14 ]) - 1 #OK
-    clusters[8, :] = np.array([ 4,  24, 28, 33, 35 ]) - 1 #OK
-    clusters[9, :] = np.array([ 41, 39, 37, 34, 30 ]) - 1 #OK
-    clusters[10,:] = np.array([ 6,  36, 38, 43, 45 ]) - 1 #OK
-    clusters[11,:] = np.array([ 51, 49, 47, 44, 40 ]) - 1 #OK
+    clusters[0, :] = np.array([ 16, 57, 54, 50, 59 ]) - 1
+    clusters[1, :] = np.array([ 52, 42, 32, 20, 60 ]) - 1
+    clusters[2, :] = np.array([ 15, 19, 13, 11, 17 ]) - 1
+    clusters[3, :] = np.array([ 56, 58, 18, 26, 10 ]) - 1
+    clusters[4, :] = np.array([ 8,  46, 48, 53, 55 ]) - 1
+    clusters[5, :] = np.array([ 1,  3,  5,  7,  9  ]) - 1
+    clusters[6, :] = np.array([ 25, 12, 21, 23, 2  ]) - 1
+    clusters[7, :] = np.array([ 31, 29, 27, 22, 14 ]) - 1
+    clusters[8, :] = np.array([ 4,  24, 28, 33, 35 ]) - 1
+    clusters[9, :] = np.array([ 41, 39, 37, 34, 30 ]) - 1
+    clusters[10,:] = np.array([ 6,  36, 38, 43, 45 ]) - 1
+    clusters[11,:] = np.array([ 51, 49, 47, 44, 40 ]) - 1
     if ( True ):
         ao2loc_old = myInts.ao2loc.copy()
         for cnt in range( 12 ):
@@ -167,7 +165,6 @@ if ( nAtomPerImp == 5 ):
         impurities = np.zeros( [ len( active ) ], dtype=int )
         impurities[ cnt*nAtomPerImp : (cnt+1)*nAtomPerImp ] = 1
         impurityClusters.append( impurities )
-    myInts.TI_OK = True # Overwrite that translational invariance is OK
 
 isTranslationInvariant = False
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant )

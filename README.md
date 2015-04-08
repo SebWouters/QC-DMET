@@ -21,7 +21,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 Building and testing
 --------------------
 
-QC-DMET requires python, numpy, scipy,
+QC-DMET requires python, numpy, scipy, CMake,
 [libchemps2](https://github.com/SebWouters/CheMPS2), 
 [libcint](https://github.com/sunqm/libcint),
 [pyscf](https://github.com/sunqm/pyscf),
@@ -32,6 +32,15 @@ The path to PyCheMPS2.so can be adjusted in [chemps2.py](src/chemps2.py),
 the path to _psi4.so can be adjusted in [psi4cc.py](src/psi4cc.py), and
 the path to the folder in which pyscf is installed in
 [localintegrals.py](src/localintegrals.py).
+
+Go to the folder lib and compile libqcdmet.so:
+
+    > cd lib
+    > mkdir build
+    > cd build
+    > CXX=icpc CC=icc cmake .. -DMKL=ON
+    > make
+    > cd ../..
 
 Start from the files tests/test*.py.
 

@@ -1,13 +1,21 @@
 *pyc
 *~
+
 tests/*.molden
 tests/*.pyc
 tests/*~
 tests/*.txt
+
 *.txt
 src/*pyc
 src/*~
+
 tests/timer.dat
 tests/*.profile
 tests/*.lprof
+
+lib/build
+lib/object
+lib/objects
+lib/libqcdmet.so
 

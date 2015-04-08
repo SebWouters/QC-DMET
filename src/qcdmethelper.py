@@ -20,14 +20,43 @@
 import localintegrals
 import rhf
 import numpy as np
+import ctypes
+lib_qcdmet = ctypes.CDLL('../lib/libqcdmet.so')
 
 class qcdmethelper:
 
-    def __init__( self, theLocalIntegrals ):
+    def __init__( self, theLocalIntegrals, list_H1 ):
     
         self.locints = theLocalIntegrals
         assert( self.locints.Nelec % 2 == 0 )
         self.numPairs = self.locints.Nelec / 2
+        
+        # Variables for c gradient calculation
+        self.list_H1 = list_H1
+        H1start, H1row, H1col = self.convertH1sparse()
+        self.H1start = H1start
+        self.H1row = H1row
+        self.H1col = H1col
+        self.Nterms = len( self.H1start ) - 1
+        
+    def convertH1sparse( self ):
+    
+        H1start = []
+        H1row   = []
+        H1col   = []
+        H1start.append( 0 )
+        totalsize = 0
+        for count in range( len( self.list_H1 ) ):
+            rowco, colco = np.where( self.list_H1[count] == 1 )
+            totalsize += len( rowco )
+            H1start.append( totalsize )
+            for count2 in range( len( rowco ) ):
+                H1row.append( rowco[ count2 ] )
+                H1col.append( colco[ count2 ] )
+        H1start = np.array( H1start, dtype=ctypes.c_int )
+        H1row   = np.array( H1row,   dtype=ctypes.c_int )
+        H1col   = np.array( H1col,   dtype=ctypes.c_int )
+        return ( H1start, H1row, H1col )
 
     def construct1RDM_loc( self, doSCF, umat ):
         
@@ -39,8 +68,8 @@ class qcdmethelper:
             else:
                 DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
         return DMloc
-
-    def construct1RDM_loc_response( self, doSCF, umat, list_H1 ):
+    
+    def construct1RDM_loc_response( self, doSCF, umat ):
         
         OEI = self.locints.loc_rhf_fock() + umat
         if ( doSCF == True ):
@@ -50,29 +79,22 @@ class qcdmethelper:
             else:
                 DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
             OEI = self.locints.loc_rhf_fock_bis( DMloc ) + umat
-
-        eigenvals, eigenvecs = np.linalg.eigh( OEI ) # Does not guarantee sorted eigenvectors!
-        idx = eigenvals.argsort()
-        eigenvals = eigenvals[idx]
-        eigenvecs = eigenvecs[:,idx] # Sorted eigenvalues and eigenvectors!
-        OCCUPIED  = eigenvecs[ : , :self.numPairs ]
-        VIRTUAL   = eigenvecs[ : , self.numPairs: ]
         
-        if ( doSCF == False ):
-            DMloc = 2 * np.dot( OCCUPIED, OCCUPIED.T )
-            
-        # TEMP[ virt , occ ] = -1.0 / ( epsilon_virt - epsilon_occ )
-        TEMP = -1.0 / ( eigenvals[ self.numPairs: ].reshape(-1,1) - eigenvals[ :self.numPairs ].reshape(-1) )
+        rdm_deriv = np.ones( [ self.locints.Norbs * self.locints.Norbs * self.Nterms ], dtype=ctypes.c_double )
+        OEI = np.array( OEI.reshape( (self.locints.Norbs * self.locints.Norbs) ), dtype=ctypes.c_double )
         
-        RDMderivs = []
-        for H1 in list_H1:
-            WORK = np.dot( VIRTUAL.T , np.dot( H1 , OCCUPIED ) )
-            WORK = np.multiply( WORK, TEMP )
-            C_1 = np.dot( VIRTUAL, WORK )
-            deriv = 2 * np.dot( OCCUPIED, C_1.T )
-            deriv = deriv + deriv.T
-            RDMderivs.append(deriv)
-        return ( DMloc, RDMderivs )
+        lib_qcdmet.rhf_response( ctypes.c_int( self.locints.Norbs ),
+                                 ctypes.c_int( self.Nterms ),
+                                 ctypes.c_int( self.numPairs ),
+                                 self.H1start.ctypes.data_as( ctypes.c_void_p ),
+                                 self.H1row.ctypes.data_as( ctypes.c_void_p ),
+                                 self.H1col.ctypes.data_as( ctypes.c_void_p ),
+                                 OEI.ctypes.data_as( ctypes.c_void_p ),
+                                 rdm_deriv.ctypes.data_as( ctypes.c_void_p ) )
+        
+        OEI = OEI.reshape( (self.locints.Norbs, self.locints.Norbs), order='C' )
+        rdm_deriv = rdm_deriv.reshape( (self.Nterms, self.locints.Norbs, self.locints.Norbs), order='C' )
+        return ( OEI, rdm_deriv )
         
     def construct1RDM_base( self, OEI, myNumPairs ):
     

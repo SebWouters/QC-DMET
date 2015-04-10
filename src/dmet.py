@@ -21,6 +21,7 @@ import localintegrals
 import qcdmethelper
 import numpy as np
 from scipy import optimize
+import time
 
 class dmet:
 
@@ -54,6 +55,11 @@ class dmet:
         self.mu_imp   = 0.0
         self.mask     = self.make_mask()
         self.helper   = qcdmethelper.qcdmethelper( self.ints, self.makelist_H1() )
+        
+        self.time_ed  = 0.0
+        self.time_cf  = 0.0
+        self.time_func= 0.0
+        self.time_grad= 0.0
         
         np.set_printoptions(precision=3, linewidth=200)
         
@@ -178,6 +184,8 @@ class dmet:
     
     def rdm_differences( self, newumatflat ):
     
+        start_func = time.time()
+    
         newumatsquare = self.flat2square( newumatflat )
         OneRDM = self.helper.construct1RDM_loc( self.doSCF, newumatsquare )
         
@@ -202,12 +210,18 @@ class dmet:
             errors[ jump : jump + squaresize ] = np.reshape( theerror, squaresize, order='F' )
             jump += squaresize
         assert ( jump == thesize )
+        
+        stop_func = time.time()
+        self.time_func += ( stop_func - start_func )
+        
         return errors
     
     def rdm_differences_derivative( self, newumatflat ):
         
+        start_grad = time.time()
+        
         newumatsquare = self.flat2square( newumatflat )
-        OneRDM, RDMderivs = self.helper.construct1RDM_loc_response( self.doSCF, newumatsquare )
+        OneRDM, RDMderivs = self.helper.construct1RDM_loc_response_c( self.doSCF, newumatsquare )
         
         thesize = 0
         for item in self.imp_size:
@@ -231,6 +245,10 @@ class dmet:
             assert ( jump == thesize )
             gradient.append( error_deriv )
         gradient = np.array( gradient ).T
+        
+        stop_grad = time.time()
+        self.time_grad += ( stop_grad - start_grad )
+        
         return gradient
         
     def verify_gradient( self, umatflat ):
@@ -307,13 +325,17 @@ class dmet:
             rdm_old = self.transform_ed_1rdm()
             
             # Find the chemical potential for the correlated impurity problem
+            start_ed = time.time()
             self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+            stop_ed = time.time()
+            self.time_ed += ( stop_ed - start_ed )
             print "   Chemical potential =", self.mu_imp
             print "   Energy =", self.energy
             #self.verify_gradient( self.umat[ self.mask ] ) # Only works for self.doSCF == False!!
             #self.hessian_eigenvalues( self.umat[ self.mask ] )
             
             # Solve for the u-matrix
+            start_cf = time.time()
             if ( self.leastsq == True ):
                 result = optimize.leastsq( self.rdm_differences, self.umat[ self.mask ], Dfun=self.rdm_differences_derivative, factor=0.1 )
                 self.umat = self.flat2square( result[ 0 ] )
@@ -323,6 +345,8 @@ class dmet:
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
             print "   Cost function after convergence =", self.costfunction( self.umat[ self.mask ] )
             #self.hessian_eigenvalues( self.umat[ self.mask ] )
+            stop_cf = time.time()
+            self.time_cf += ( stop_cf - start_cf )
             
             # Possibly print the u-matrix / 1-RDM
             if self.print_u:
@@ -337,6 +361,13 @@ class dmet:
             print "   2-norm of difference old and new 1-RDM =", rdm_diff
             print "******************************************************"
             
+            #u_diff = 0.1 * convergence_threshold # Do only 1 iteration
+        
+        print "Time cf func =", self.time_func
+        print "Time cf grad =", self.time_grad
+        print "Time dmet ed =", self.time_ed
+        print "Time dmet cf =", self.time_cf
+        
         return self.energy
         
     def print_umat( self ):

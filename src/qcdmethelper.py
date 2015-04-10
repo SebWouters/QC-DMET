@@ -69,7 +69,7 @@ class qcdmethelper:
                 DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
         return DMloc
     
-    def construct1RDM_loc_response( self, doSCF, umat ):
+    def construct1RDM_loc_response_c( self, doSCF, umat ):
         
         OEI = self.locints.loc_rhf_fock() + umat
         if ( doSCF == True ):

@@ -115,6 +115,9 @@ for atom in range( mol.natm ):
         myInts.ao2loc[ :, atom ] = - myInts.ao2loc[ :, atom ]
 myInts.molden( 'buckyball.molden' )
 
+method = 'CC'
+#myInts.exact_reference( method, False ) # No printing
+
 nAtomPerImp = 5
 impurityClusters = []
 
@@ -142,32 +145,33 @@ if ( nAtomPerImp == 2 ):
             impurityClusters.append( impurities )
             notused[ atom   ] = 0
             notused[ friend ] = 0
-if ( nAtomPerImp == 5 ):
-    clusters = np.zeros( [ 12, nAtomPerImp ], dtype=int )
+if ( nAtomPerImp >= 5 ):
+    assert( nAtomPerImp %  5 == 0 )
+    assert( 60 % nAtomPerImp == 0 )
+    clusters = np.zeros( [ 12, 5 ], dtype=int )
     clusters[0, :] = np.array([ 16, 57, 54, 50, 59 ]) - 1
     clusters[1, :] = np.array([ 52, 42, 32, 20, 60 ]) - 1
     clusters[2, :] = np.array([ 15, 19, 13, 11, 17 ]) - 1
     clusters[3, :] = np.array([ 56, 58, 18, 26, 10 ]) - 1
-    clusters[4, :] = np.array([ 8,  46, 48, 53, 55 ]) - 1
-    clusters[5, :] = np.array([ 1,  3,  5,  7,  9  ]) - 1
-    clusters[6, :] = np.array([ 25, 12, 21, 23, 2  ]) - 1
-    clusters[7, :] = np.array([ 31, 29, 27, 22, 14 ]) - 1
-    clusters[8, :] = np.array([ 4,  24, 28, 33, 35 ]) - 1
-    clusters[9, :] = np.array([ 41, 39, 37, 34, 30 ]) - 1
-    clusters[10,:] = np.array([ 6,  36, 38, 43, 45 ]) - 1
+    clusters[4, :] = np.array([ 1,  3,  5,  7,  9  ]) - 1
+    clusters[5, :] = np.array([ 25, 12, 21, 23, 2  ]) - 1
+    clusters[6, :] = np.array([ 31, 29, 27, 22, 14 ]) - 1
+    clusters[7, :] = np.array([ 4,  24, 28, 33, 35 ]) - 1
+    clusters[8, :] = np.array([ 41, 39, 37, 34, 30 ]) - 1
+    clusters[9, :] = np.array([ 6,  36, 38, 43, 45 ]) - 1
+    clusters[10,:] = np.array([ 8,  46, 48, 53, 55 ]) - 1
     clusters[11,:] = np.array([ 51, 49, 47, 44, 40 ]) - 1
-    if ( True ):
-        ao2loc_old = myInts.ao2loc.copy()
-        for cnt in range( 12 ):
-            myInts.ao2loc[ :, cnt*nAtomPerImp : (cnt+1)*nAtomPerImp ] = ao2loc_old[ :, clusters[cnt, :] ]
-        myInts.molden( 'buckyball.molden' )
+    ao2loc_old = myInts.ao2loc.copy()
     for cnt in range( 12 ):
+        myInts.ao2loc[ :, cnt*5 : (cnt+1)*5 ] = ao2loc_old[ :, clusters[cnt, :] ]
+    myInts.molden( 'buckyball.molden' )
+    for cnt in range( 60 / nAtomPerImp ):
         impurities = np.zeros( [ len( active ) ], dtype=int )
         impurities[ cnt*nAtomPerImp : (cnt+1)*nAtomPerImp ] = 1
         impurityClusters.append( impurities )
 
 isTranslationInvariant = False
-theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant )
+theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method )
 theDMET.doselfconsistent()
 
 

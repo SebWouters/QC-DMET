@@ -52,7 +52,7 @@ mol.atom = '''
     H            7.730037326540    -0.274233461510     0.000000000000
     H            6.853933738256     1.372796553918     0.000000000000
   '''
-mol.basis = 'cc-pVDZ'
+mol.basis = '6-31G'
 mol.symmetry = 0
 mol.charge = 0
 mol.spin = 0 #2*S; multiplicity-1
@@ -67,7 +67,7 @@ myInts.molden( 'C12H14.molden' )
 
 exit(123)
 
-unit_sizes = np.array([ 24, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 24 ]) # CH2, 10xCH, CH2
+unit_sizes = np.array([ 13, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 13 ]) # CH2, 10xCH, CH2
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
 method = 'CC'

@@ -40,7 +40,7 @@ mol.atom = '''
     C            0.000000000000     0.000000000000     7.071398867071
     H            0.000000000000     0.000000000000     8.144044918552
   '''
-mol.basis = 'cc-pVDZ'
+mol.basis = '6-31G'
 mol.symmetry = 0
 mol.charge = 0
 mol.spin = 0 #2*S; multiplicity-1
@@ -53,7 +53,7 @@ mf.scf()
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'C12H2.molden' )
 
-unit_sizes = np.array([ 19, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 19 ]) # CH, 10xC, CH
+unit_sizes = np.array([ 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 11 ]) # CH, 10xC, CH
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
 method = 'CC'

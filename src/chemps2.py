@@ -22,6 +22,7 @@ import ctypes
 import os
 import sys
 sys.path.append('/home/seba/CheMPS2/build/PyCheMPS2')
+sys.path.append('/tigress/sebastian.wouters/sw-tiger/chemps2/build/PyCheMPS2')
 import PyCheMPS2
 
 def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=False ):

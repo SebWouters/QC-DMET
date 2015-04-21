@@ -22,6 +22,7 @@ import ctypes
 import os
 import sys
 sys.path.append('/home/seba/psi4cc')
+sys.path.append('/tigress/sebastian.wouters/sw-tiger/psi4cc')
 import psi4
 import rhf
 import localintegrals

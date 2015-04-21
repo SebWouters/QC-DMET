@@ -67,7 +67,7 @@ class localintegrals:
         self.activeCONST = self.mol.energy_nuc() + np.einsum( 'ij,ij->', self.frozenOEIao - 0.5*self.frozenJKao, self.frozenDMao )
         self.activeOEI   = np.dot( np.dot( self.ao2loc.T, self.frozenOEIao ), self.ao2loc )
         self.activeFOCK  = np.dot( np.dot( self.ao2loc.T, self.fullFOCKao  ), self.ao2loc )
-        if ( self.Norbs <= 150 ):
+        if ( self.Norbs <= 200 ):
             self.ERIinMEM  = True
             self.activeERI = ao2mo.outcore.full_iofree( self.mol, self.ao2loc, compact=False ).reshape(self.Norbs, self.Norbs, self.Norbs, self.Norbs)
         else:

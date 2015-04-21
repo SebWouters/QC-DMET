@@ -65,8 +65,6 @@ mf.scf()
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'C12H14.molden' )
 
-exit(123)
-
 unit_sizes = np.array([ 13, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 13 ]) # CH2, 10xCH, CH2
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 

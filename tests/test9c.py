@@ -56,9 +56,6 @@ myInts.molden( 'C12H2.molden' )
 unit_sizes = np.array([ 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 11 ]) # CH, 10xC, CH
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
-method = 'CC'
-myInts.exact_reference( method, True ) # Printing
-
 carbons_in_cluster = 1
 units_counter = 0
 orbitals_counter = 0
@@ -78,6 +75,7 @@ for item in impurityClusters:
 assert ( np.linalg.norm( totalcount - np.ones( [ mol.nao_nr() ], dtype=float ) ) < 1e-12 )
 
 isTranslationInvariant = False
+method = 'CC'
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method )
 theDMET.doselfconsistent()
 

@@ -77,7 +77,7 @@ mf.scf()
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'C12H25Cl.molden' )
 
-unit_sizes = np.array([ 29, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 15 ]) # CH3, 10xCH2, CH3
+unit_sizes = np.array([ 26, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 15 ]) # CH2Cl, 10xCH2, CH3
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
 carbons_in_cluster = 1

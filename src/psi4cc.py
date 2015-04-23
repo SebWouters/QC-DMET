@@ -28,7 +28,7 @@ import rhf
 import localintegrals
 from pyscf import ao2mo
 
-def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=False ):
+def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, printoutput=False ):
 
     # Killing output if necessary
     if ( printoutput==False ):
@@ -48,10 +48,7 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
     # Get the RHF solution
     assert( Nel % 2 == 0 )
     numPairs = Nel / 2
-    eigvals, eigvecs = np.linalg.eigh( FOCKcopy )
-    eigvecs = eigvecs[ :, eigvals.argsort() ]
-    DMguess = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-    DMrhf   = rhf.solve_ERI( FOCKcopy, TEI, DMguess, numPairs )
+    DMrhf   = rhf.solve_ERI( FOCKcopy, TEI, DMguessRHF, numPairs )
     Erhf    = CONST + np.einsum('ij,ij->', FOCKcopy, DMrhf)
     Erhf   += 0.5 * np.einsum('ijkl,ij,kl->', TEI, DMrhf, DMrhf) - 0.25 * np.einsum('ijkl,ik,jl->', TEI, DMrhf, DMrhf)
     
@@ -65,7 +62,7 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
     TEI_mo      = ao2mo.incore.full( ao2mo.restore(8, TEI, Norb), eigvecs, compact=False ).reshape(Norb, Norb, Norb, Norb)
     
     # Get the CC solution
-    psi4cc = psi4.Solver()
+    psi4cc = psi4.Solver( (1<<33) ) # Standard in psi4cc was (1<<30)=1.07Gb. (1<<33)=8.59Gb.
     psi4cc.prepare('RHF', np.eye(Norb), FOCKcopy_mo, ao2mo.restore(4,TEI_mo,Norb), Nel)
     Ecorrelation = psi4cc.energy('CCSD')
     OneRDM_mo, TwoRDM_mo = psi4cc.density() # 2-RDM is stored in physics notation!

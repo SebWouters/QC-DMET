@@ -67,7 +67,7 @@ class localintegrals:
         self.activeCONST = self.mol.energy_nuc() + np.einsum( 'ij,ij->', self.frozenOEIao - 0.5*self.frozenJKao, self.frozenDMao )
         self.activeOEI   = np.dot( np.dot( self.ao2loc.T, self.frozenOEIao ), self.ao2loc )
         self.activeFOCK  = np.dot( np.dot( self.ao2loc.T, self.fullFOCKao  ), self.ao2loc )
-        if ( self.Norbs <= 200 ):
+        if ( self.Norbs <= 150 ):
             self.ERIinMEM  = True
             self.activeERI = ao2mo.outcore.full_iofree( self.mol, self.ao2loc, compact=False ).reshape(self.Norbs, self.Norbs, self.Norbs, self.Norbs)
         else:
@@ -92,8 +92,8 @@ class localintegrals:
         eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
         eigvecs = eigvecs[ :, eigvals.argsort() ]
         assert( self.Nelec % 2 == 0 )
-        numPairs   = self.Nelec / 2
-        DMguess    = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
+        numPairs = self.Nelec / 2
+        DMguess = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
         if ( self.ERIinMEM == True ):
             DMloc = rhf.solve_ERI( self.activeOEI, self.activeERI, DMguess, numPairs )
         else:
@@ -119,7 +119,12 @@ class localintegrals:
             GSenergy, GS_1DM = chemps2.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
         if ( method == 'CC' ):
             import psi4cc
-            GSenergy, GS_1DM = psi4cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
+            eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
+            eigvecs = eigvecs[ :, eigvals.argsort() ]
+            assert( self.Nelec % 2 == 0 )
+            numPairs = self.Nelec / 2
+            DMguessRHF = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
+            GSenergy, GS_1DM = psi4cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, chemical_pot, printstuff )
         print "Total",method,"ground state energy =", GSenergy
         return GSenergy
         
@@ -162,6 +167,17 @@ class localintegrals:
     
         FOCKdmet = np.dot( np.dot( loc2dmet[:,:numActive].T, self.loc_rhf_fock_bis( coreDMloc ) ), loc2dmet[:,:numActive] )
         return FOCKdmet
+        
+    def dmet_init_guess_rhf( self, loc2dmet, numActive, numPairs, Nimp, chempot_imp ):
+    
+        Fock_small = np.dot( np.dot( loc2dmet[:,:numActive].T, self.activeFOCK ), loc2dmet[:,:numActive] )
+        if (chempot_imp != 0.0):
+            for orb in range(Nimp):
+                Fock_small[ orb, orb ] -= chempot_imp
+        eigvals, eigvecs = np.linalg.eigh( Fock_small )
+        eigvecs = eigvecs[ :, eigvals.argsort() ]
+        DMguess = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
+        return DMguess
         
     def dmet_tei( self, loc2dmet, numAct ):
     

@@ -154,7 +154,9 @@ class dmet:
                 IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
             if ( self.method == 'CC' ):
                 import psi4cc
-                IMP_energy, IMP_1RDM = psi4cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
+                assert( Nelec_in_imp % 2 == 0 )
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, 2*numImpOrbs, Nelec_in_imp/2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = psi4cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
             

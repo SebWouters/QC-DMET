@@ -52,7 +52,7 @@ active = np.array([ 17, 20, 21, 22, 23, 30 ]) - 1
 
 myInts = localintegrals.localintegrals( mf, active, 'boys' )
 myInts.molden( 'benzene.molden' )
-method = 'ED' # Method should be 'ED' or 'CC'
+method = 'ED' # Method should be 'ED' or 'CC' or 'MP2'
 myInts.exact_reference( method, False ) # Exact diagonalization; no printing
 
 #Imp size : 1 - 2 orbitals

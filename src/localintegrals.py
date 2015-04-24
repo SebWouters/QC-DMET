@@ -107,7 +107,7 @@ class localintegrals:
         
     def exact_reference( self, method='ED', printstuff=True ):
     
-        assert (( method == 'ED' ) or ( method == 'CC' ))
+        assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
         if ( self.ERIinMEM == False ):
             print "localintegrals::exact_reference : ERI of the localized orbitals are not stored in memory."
         assert ( self.ERIinMEM == True )
@@ -125,6 +125,14 @@ class localintegrals:
             numPairs = self.Nelec / 2
             DMguessRHF = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
             GSenergy, GS_1DM = psi4cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, chemical_pot, printstuff )
+        if ( method == 'MP2' ):
+            import pyscf_mp2
+            eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
+            eigvecs = eigvecs[ :, eigvals.argsort() ]
+            assert( self.Nelec % 2 == 0 )
+            numPairs = self.Nelec / 2
+            DMguessRHF = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
+            GSenergy, GS_1DM = pyscf_mp2.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, chemical_pot, printstuff )
         print "Total",method,"ground state energy =", GSenergy
         return GSenergy
         

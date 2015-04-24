@@ -30,7 +30,7 @@ class dmet:
         if ( isTranslationInvariant == True ):
             assert( theInts.TI_OK == True )
         
-        assert (( method == 'ED' ) or ( method == 'CC' ))
+        assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
         
         self.ints     = theInts
         self.Norb     = self.ints.Norbs
@@ -157,6 +157,11 @@ class dmet:
                 assert( Nelec_in_imp % 2 == 0 )
                 DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, 2*numImpOrbs, Nelec_in_imp/2, numImpOrbs, chempot_imp )
                 IMP_energy, IMP_1RDM = psi4cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
+            if ( self.method == 'MP2' ):
+                import pyscf_mp2
+                assert( Nelec_in_imp % 2 == 0 )
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, 2*numImpOrbs, Nelec_in_imp/2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = pyscf_mp2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
             

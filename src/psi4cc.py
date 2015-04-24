@@ -55,7 +55,10 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, 
     # Rotate everything to the MO basis
     FOCKrhf = FOCKcopy + np.einsum('ijkl,ij->kl', TEI, DMrhf) - 0.5 * np.einsum('ijkl,ik->jl', TEI, DMrhf)
     eigvals, eigvecs = np.linalg.eigh( FOCKrhf )
-    eigvecs = eigvecs[ :, eigvals.argsort() ]
+    idx = eigvals.argsort()
+    eigvals = eigvals[ idx ]
+    print "psi4cc::solve : RHF homo-lumo gap =", eigvals[numPairs] - eigvals[numPairs-1]
+    eigvecs = eigvecs[ :, idx ]
     DMrhf2  = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
     print "Two-norm difference of 1-RDM(RHF) and 1-RDM(FOCK(RHF)) =", np.linalg.norm(DMrhf - DMrhf2)
     FOCKcopy_mo = np.dot( eigvecs.T, np.dot( FOCKcopy, eigvecs ) )

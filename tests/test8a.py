@@ -58,7 +58,8 @@ H            -7.853542    0.167696    0.000001
 H            -6.982821   -1.090177    0.882796
 C            -6.947283   -0.444115   -0.000001
 '''
-mol.basis = '6-31g*'
+#mol.basis = '6-31g*'
+mol.basis = 'sto-3g'
 mol.symmetry = 0
 mol.charge = 0
 mol.spin = 0 #2*S; multiplicity-1
@@ -71,10 +72,13 @@ mf.scf()
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( '1-chlorodecane.molden' )
 
-unit_sizes = np.array([ 42, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # 1 ClCH2, 8 CH2, and 1 CH3
+if ( mol.basis == '6-31g*' ):
+    unit_sizes = np.array([ 42, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # 1 ClCH2, 8 CH2, and 1 CH3
+if ( mol.basis == 'sto-3g' ):
+    unit_sizes = np.array([ 16, 7, 7, 7, 7, 7, 7, 7, 7, 8 ]) # 1 ClCH2, 8 CH2, and 1 CH3
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
-carbons_in_cluster = 1
+carbons_in_cluster = 2
 units_counter = 0
 orbitals_counter = 0
 

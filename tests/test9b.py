@@ -52,7 +52,8 @@ mol.atom = '''
     H            7.730037326540    -0.274233461510     0.000000000000
     H            6.853933738256     1.372796553918     0.000000000000
   '''
-mol.basis = '6-31G'
+#mol.basis = '6-31g'
+mol.basis = 'sto-3g'
 mol.symmetry = 0
 mol.charge = 0
 mol.spin = 0 #2*S; multiplicity-1
@@ -65,7 +66,10 @@ mf.scf()
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'C12H14.molden' )
 
-unit_sizes = np.array([ 13, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 13 ]) # CH2, 10xCH, CH2
+if ( mol.basis == '6-31g' ):
+    unit_sizes = np.array([ 13, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 13 ]) # CH2, 10xCH, CH2
+if ( mol.basis == 'sto-3g' ):
+    unit_sizes = np.array([ 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7 ]) # CH2, 10xCH, CH2
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
 carbons_in_cluster = 1

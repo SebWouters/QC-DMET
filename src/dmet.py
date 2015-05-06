@@ -41,7 +41,12 @@ class dmet:
         self.doSCF      = False
         self.TransInv   = isTranslationInvariant
         self.leastsq    = True
-        self.fitImpBath = True # Fitting the impurity plus bath is **way** more stable
+        self.fitImpBath = True
+        self.doDET      = False
+        
+        if ( self.doDET == True ):
+            # Cfr Bulik, PRB 89, 035140 (2014)
+            self.fitImpBath = False
         
         self.print_u    = True
         self.print_rdm  = True
@@ -87,39 +92,62 @@ class dmet:
     def makelist_H1( self ):
     
         theH1 = []
-        if ( self.TransInv == True ):
-            localsize = self.imp_size[ 0 ]
-            for row in range( localsize ):
-                for col in range( row, localsize ):
+        if ( self.doDET == True ): # Do density embedding theory
+            if ( self.TransInv == True ): # Translational invariance assumed
+                localsize = self.imp_size[ 0 ]
+                for row in range( localsize ):
                     H1 = np.zeros( [ self.Norb, self.Norb ], dtype=int )
                     for jumper in range( self.Norb / localsize ):
                         jumpsquare = localsize * jumper
-                        H1[ jumpsquare + row, jumpsquare + col ] = 1
-                        H1[ jumpsquare + col, jumpsquare + row ] = 1
+                        H1[ jumpsquare + row, jumpsquare + row ] = 1
                     theH1.append( H1 )
-        else:
-            jumpsquare = 0
-            for count in range( len( self.imp_size ) ):
-                localsize = self.imp_size[ count ]
+            else: # NO translational invariance assumed
+                jumpsquare = 0
+                for localsize in self.imp_size:
+                    for row in range( localsize ):
+                        H1 = np.zeros( [ self.Norb, self.Norb ], dtype=int )
+                        H1[ jumpsquare + row, jumpsquare + row ] = 1
+                        theH1.append( H1 )
+                    jumpsquare += localsize
+        else: # Do density MATRIX embedding theory
+            if ( self.TransInv == True ): # Translational invariance assumed
+                localsize = self.imp_size[ 0 ]
                 for row in range( localsize ):
                     for col in range( row, localsize ):
                         H1 = np.zeros( [ self.Norb, self.Norb ], dtype=int )
-                        H1[ jumpsquare + row, jumpsquare + col ] = 1
-                        H1[ jumpsquare + col, jumpsquare + row ] = 1
+                        for jumper in range( self.Norb / localsize ):
+                            jumpsquare = localsize * jumper
+                            H1[ jumpsquare + row, jumpsquare + col ] = 1
+                            H1[ jumpsquare + col, jumpsquare + row ] = 1
                         theH1.append( H1 )
-                jumpsquare += localsize
+            else: # NO translational invariance assumed
+                jumpsquare = 0
+                for localsize in self.imp_size:
+                    for row in range( localsize ):
+                        for col in range( row, localsize ):
+                            H1 = np.zeros( [ self.Norb, self.Norb ], dtype=int )
+                            H1[ jumpsquare + row, jumpsquare + col ] = 1
+                            H1[ jumpsquare + col, jumpsquare + row ] = 1
+                            theH1.append( H1 )
+                    jumpsquare += localsize
         return theH1
         
     def make_mask( self ):
     
-        themask = np.zeros([self.Norb,self.Norb], dtype=bool)
-        jump = 0
-        for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
-            localsize = self.imp_size[ count ]
-            for row in range( localsize ):
-                for col in range( row, localsize ):
-                    themask[ jump + row, jump + col ] = True
-            jump += localsize
+        themask = np.zeros( [ self.Norb, self.Norb ], dtype=bool )
+        if ( self.doDET == True ): # Do density embedding theory
+            jump = 0
+            for localsize in self.imp_size: # self.imp_size has length 1 if self.TransInv
+                for row in range( localsize ):
+                    themask[ jump + row, jump + row ] = True
+                jump += localsize
+        else: # Do density MATRIX embedding theory
+            jump = 0
+            for localsize in self.imp_size: # self.imp_size has length 1 if self.TransInv
+                for row in range( localsize ):
+                    for col in range( row, localsize ):
+                        themask[ jump + row, jump + col ] = True
+                jump += localsize
         return themask
         
     def doexact( self, chempot_imp=0.0 ):
@@ -167,9 +195,7 @@ class dmet:
             
         Nelectrons = 0.0
         for counter in range( maxiter ):
-            IMP_1RDM = self.imp_1RDM[ counter ]
-            IMP_Size = self.imp_size[ counter ]
-            Nelectrons += np.trace( IMP_1RDM[ :IMP_Size, :IMP_Size ] )
+            Nelectrons += np.trace( self.imp_1RDM[counter][ :self.imp_size[counter], :self.imp_size[counter] ] )
         if ( self.TransInv == True ):
             Nelectrons = Nelectrons * len( self.impClust )
             self.energy = self.energy * len( self.impClust )
@@ -197,11 +223,17 @@ class dmet:
         OneRDM = self.helper.construct1RDM_loc( self.doSCF, newumatsquare )
         
         thesize = 0
-        for item in self.imp_size:
-            if ( self.fitImpBath == True ):
-                thesize += 4 * item * item
-            else:
-                thesize += item * item
+        for localsize in self.imp_size:
+            if ( self.doDET == True ): # Do density embedding theory
+                if ( self.fitImpBath == True ):
+                    thesize += 2 * localsize
+                else:
+                    thesize += localsize
+            else: # Do density MATRIX embedding theory
+                if ( self.fitImpBath == True ):
+                    thesize += 4 * localsize * localsize
+                else:
+                    thesize += localsize * localsize
         errors = np.zeros( [ thesize ], dtype=float )
         
         jump = 0
@@ -212,10 +244,15 @@ class dmet:
             else:
                 mf_1RDM = (OneRDM[:,self.impClust[count]==1])[self.impClust[count]==1,:]
                 ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
-            theerror = mf_1RDM - ed_1RDM
-            squaresize = theerror.shape[0] * theerror.shape[1]
-            errors[ jump : jump + squaresize ] = np.reshape( theerror, squaresize, order='F' )
-            jump += squaresize
+            if ( self.doDET == True ): # Do density embedding theory
+                theerror = np.diag( mf_1RDM - ed_1RDM )
+                errors[ jump : jump + len( theerror ) ] = theerror
+                jump += len( theerror )
+            else: # Do density MATRIX embedding theory
+                theerror = mf_1RDM - ed_1RDM
+                squaresize = theerror.shape[0] * theerror.shape[1]
+                errors[ jump : jump + squaresize ] = np.reshape( theerror, squaresize, order='F' )
+                jump += squaresize
         assert ( jump == thesize )
         
         stop_func = time.time()
@@ -231,11 +268,17 @@ class dmet:
         OneRDM, RDMderivs = self.helper.construct1RDM_loc_response_c( self.doSCF, newumatsquare )
         
         thesize = 0
-        for item in self.imp_size:
-            if ( self.fitImpBath == True ):
-                thesize += 4 * item * item
-            else:
-                thesize += item * item
+        for localsize in self.imp_size:
+            if ( self.doDET == True ): # Do density embedding theory
+                if ( self.fitImpBath == True ):
+                    thesize += 2 * localsize
+                else:
+                    thesize += localsize
+            else: # Do density MATRIX embedding theory
+                if ( self.fitImpBath == True ):
+                    thesize += 4 * localsize * localsize
+                else:
+                    thesize += localsize * localsize
         
         gradient = []
         for countgr in range( len( newumatflat ) ):
@@ -246,9 +289,14 @@ class dmet:
                     local_derivative = np.dot( np.dot( self.dmetOrbs[ count ].T, RDMderivs[ countgr, :, : ] ), self.dmetOrbs[ count ] )
                 else:
                     local_derivative = ((RDMderivs[ countgr, :, : ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
-                squaresize = local_derivative.shape[0] * local_derivative.shape[1]
-                error_deriv[ jump : jump + squaresize ] = np.reshape( local_derivative, squaresize, order='F' )
-                jump += squaresize
+                if ( self.doDET == True ): # Do density embedding theory
+                    local_derivative = np.diag( local_derivative )
+                    error_deriv[ jump : jump + len( local_derivative ) ] = local_derivative
+                    jump += len( local_derivative )
+                else: # Do density MATRIX embedding theory
+                    squaresize = local_derivative.shape[0] * local_derivative.shape[1]
+                    error_deriv[ jump : jump + squaresize ] = np.reshape( local_derivative, squaresize, order='F' )
+                    jump += squaresize
             assert ( jump == thesize )
             gradient.append( error_deriv )
         gradient = np.array( gradient ).T
@@ -262,9 +310,9 @@ class dmet:
     
         gradient = self.costfunction_derivative( umatflat )
         cost_reference = self.costfunction( umatflat )
-        gradientbis = np.zeros( [len(gradient)], dtype=float )
+        gradientbis = np.zeros( [ len( gradient ) ], dtype=float )
         stepsize = 1e-7
-        for cnt in range(len(gradient)):
+        for cnt in range( len( gradient ) ):
             umatbis = np.array( umatflat, copy=True )
             umatbis[cnt] += stepsize
             costbis = self.costfunction( umatbis )
@@ -276,8 +324,8 @@ class dmet:
     
         stepsize = 1e-7
         gradient_reference = self.costfunction_derivative( umatflat )
-        hessian = np.zeros( [ len(umatflat), len(umatflat) ], dtype=float )
-        for cnt in range(len(umatflat)):
+        hessian = np.zeros( [ len( umatflat ), len( umatflat ) ], dtype=float )
+        for cnt in range( len( umatflat ) ):
             gradient = umatflat.copy()
             gradient[ cnt ] += stepsize
             gradient = self.costfunction_derivative( gradient )
@@ -333,10 +381,13 @@ class dmet:
             
             # Find the chemical potential for the correlated impurity problem
             start_ed = time.time()
-            self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+            if ( self.doDET == True ):
+                self.doexact()
+            else:
+                self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+                print "   Chemical potential =", self.mu_imp
             stop_ed = time.time()
             self.time_ed += ( stop_ed - start_ed )
-            print "   Chemical potential =", self.mu_imp
             print "   Energy =", self.energy
             #self.verify_gradient( self.umat[ self.mask ] ) # Only works for self.doSCF == False!!
             #self.hessian_eigenvalues( self.umat[ self.mask ] )
@@ -381,8 +432,7 @@ class dmet:
     
         print "The u-matrix ="
         squarejumper = 0
-        for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
-            localsize = self.imp_size[ count ]
+        for localsize in self.imp_size: # self.imp_size has length 1 if self.TransInv
             print self.umat[ squarejumper:squarejumper+localsize , squarejumper:squarejumper+localsize ]
             squarejumper += localsize
     

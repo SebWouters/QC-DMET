@@ -59,7 +59,8 @@ H         7.282187    0.259647    0.008368
 H         6.435992   -0.994161   -0.903519
 C         6.387550   -0.368849   -0.006524
 '''
-mol.basis = '6-31g*'
+#mol.basis = '6-31g*'
+mol.basis = 'sto-3g'
 mol.symmetry = 0
 mol.charge = 0
 mol.spin = 0 #2*S; multiplicity-1
@@ -72,7 +73,10 @@ mf.scf()
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( '1-decanol.molden' )
 
-unit_sizes = np.array([ 43, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # 1 CH2OH, 8 CH2, and 1 CH3
+if ( mol.basis == '6-31g*' ):
+    unit_sizes = np.array([ 43, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # 1 CH2OH, 8 CH2, and 1 CH3
+if ( mol.basis == 'sto-3g' ):
+    unit_sizes = np.array([ 13, 7, 7, 7, 7, 7, 7, 7, 7, 8 ]) # 1 CH2OH, 8 CH2, and 1 CH3
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
 carbons_in_cluster = 1

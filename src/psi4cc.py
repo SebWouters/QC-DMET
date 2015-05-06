@@ -22,13 +22,13 @@ import ctypes
 import os
 import sys
 sys.path.append('/home/seba/psi4cc')
-sys.path.append('/tigress/sebastian.wouters/sw-tiger/psi4cc')
+sys.path.append('/tigress/sebastian.wouters/sw-della/psi4cc')
 import psi4
 import rhf
 import localintegrals
 from pyscf import ao2mo
 
-def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, printoutput=False ):
+def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, printoutput=True ):
 
     # Killing output if necessary
     if ( printoutput==False ):

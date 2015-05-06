@@ -21,8 +21,8 @@ import numpy as np
 import ctypes
 import os
 import sys
-sys.path.append('/home/seba/CheMPS2/build/PyCheMPS2')
-sys.path.append('/tigress/sebastian.wouters/sw-tiger/chemps2/build/PyCheMPS2')
+sys.path.append('/home/seba/CheMPS2/PyCheMPS2/build/lib.linux-x86_64-2.7')
+sys.path.append('/tigress/sebastian.wouters/sw-della/chemps2/PyCheMPS2/build/lib.linux-x86_64-2.7')
 import PyCheMPS2
 
 def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=False ):

@@ -33,8 +33,11 @@ def solve_ERI( OEI, TEI, DMguess, numPairs ):
     mf.get_hcore = lambda *args: OEI
     mf.get_ovlp = lambda *args: np.eye( L )
     mf._eri = ao2mo.restore(8, TEI, L)
+    mf.max_cycle = 500
+    mf.damp_factor = 0.33
     
     mf.scf( DMguess )
+    assert( mf.converged == True )
     DMloc = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )
     return DMloc
     
@@ -79,6 +82,8 @@ def solve_JK( OEI, mol_orig, ao2basis, DMguess, numPairs ):
     mf._eri = None
     mf.get_jk   = wrap_my_jk(   mol_orig, ao2basis )
     mf.get_veff = wrap_my_veff( mol_orig, ao2basis )
+    mf.max_cycle = 500
+    mf.damp_factor = 0.33
     
     mf.scf( DMguess )
     DMloc = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )

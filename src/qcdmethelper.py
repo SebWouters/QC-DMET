@@ -58,29 +58,34 @@ class qcdmethelper:
         H1col   = np.array( H1col,   dtype=ctypes.c_int )
         return ( H1start, H1row, H1col )
 
-    def construct1RDM_loc( self, doSCF, umat ):
+    def construct1RDM_loc( self, doSCF, umat_loc ):
         
-        OEI   = self.locints.loc_rhf_fock() + umat
+        # Everything in this functions works in the original local AO / lattice basis!
+        OEI   = self.locints.loc_rhf_fock() + umat_loc
         DMloc = self.construct1RDM_base( OEI, self.numPairs )
         if ( doSCF == True ):
             if ( self.locints.ERIinMEM == True ):
-                DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, self.numPairs )
+                DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat_loc, self.locints.loc_tei(), DMloc, self.numPairs )
             else:
-                DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
+                DMloc = rhf.solve_JK( self.locints.loc_oei() + umat_loc, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
         return DMloc
     
-    def construct1RDM_loc_response_c( self, doSCF, umat ):
+    def construct1RDM_response( self, doSCF, umat_loc, NOrotation ):
         
-        OEI = self.locints.loc_rhf_fock() + umat
+        # This part works in the original local AO / lattice basis!
+        OEI = self.locints.loc_rhf_fock() + umat_loc
         if ( doSCF == True ):
             DMloc = self.construct1RDM_base( OEI, self.numPairs )
             if ( self.locints.ERIinMEM == True ):
-                DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat, self.locints.loc_tei(), DMloc, self.numPairs )
+                DMloc = rhf.solve_ERI( self.locints.loc_oei() + umat_loc, self.locints.loc_tei(), DMloc, self.numPairs )
             else:
-                DMloc = rhf.solve_JK( self.locints.loc_oei() + umat, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
-            OEI = self.locints.loc_rhf_fock_bis( DMloc ) + umat
+                DMloc = rhf.solve_JK( self.locints.loc_oei() + umat_loc, self.locints.mol, self.locints.ao2loc, DMloc, self.numPairs )
+            OEI = self.locints.loc_rhf_fock_bis( DMloc ) + umat_loc
         
-        rdm_deriv = np.ones( [ self.locints.Norbs * self.locints.Norbs * self.Nterms ], dtype=ctypes.c_double )
+        # This part works in the rotated NO basis if NOrotation is specified
+        rdm_deriv_rot = np.ones( [ self.locints.Norbs * self.locints.Norbs * self.Nterms ], dtype=ctypes.c_double )
+        if ( NOrotation != None ):
+            OEI = np.dot( np.dot( NOrotation.T, OEI ), NOrotation )
         OEI = np.array( OEI.reshape( (self.locints.Norbs * self.locints.Norbs) ), dtype=ctypes.c_double )
         
         lib_qcdmet.rhf_response( ctypes.c_int( self.locints.Norbs ),
@@ -90,11 +95,10 @@ class qcdmethelper:
                                  self.H1row.ctypes.data_as( ctypes.c_void_p ),
                                  self.H1col.ctypes.data_as( ctypes.c_void_p ),
                                  OEI.ctypes.data_as( ctypes.c_void_p ),
-                                 rdm_deriv.ctypes.data_as( ctypes.c_void_p ) )
+                                 rdm_deriv_rot.ctypes.data_as( ctypes.c_void_p ) )
         
-        OEI = OEI.reshape( (self.locints.Norbs, self.locints.Norbs), order='C' )
-        rdm_deriv = rdm_deriv.reshape( (self.Nterms, self.locints.Norbs, self.locints.Norbs), order='C' )
-        return ( OEI, rdm_deriv )
+        rdm_deriv_rot = rdm_deriv_rot.reshape( (self.Nterms, self.locints.Norbs, self.locints.Norbs), order='C' )
+        return rdm_deriv_rot
         
     def construct1RDM_base( self, OEI, myNumPairs ):
     

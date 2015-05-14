@@ -42,14 +42,19 @@ class dmet:
         self.TransInv   = isTranslationInvariant
         self.leastsq    = True
         self.fitImpBath = True
-        self.doDET      = False
+        self.doDET      = True
+        self.doDET_NO   = True
+        self.NOrotation = None
         
         if ( self.doDET == True ):
             # Cfr Bulik, PRB 89, 035140 (2014)
             self.fitImpBath = False
+            if ( self.doDET_NO == True ):
+                self.NOvecs = None
+                self.NOdiag = None
         
-        self.print_u    = True
-        self.print_rdm  = True
+        self.print_u   = True
+        self.print_rdm = True
         
         self.testclusters()
         
@@ -156,6 +161,9 @@ class dmet:
         self.energy   = 0.0
         self.imp_1RDM = []
         self.dmetOrbs = []
+        if ( self.doDET == True ) and ( self.doDET_NO == True ):
+            self.NOvecs     = []
+            self.NOdiag     = []
         
         maxiter = len( self.impClust )
         if ( self.TransInv == True ):
@@ -192,7 +200,14 @@ class dmet:
                 IMP_energy, IMP_1RDM = pyscf_mp2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
-            
+            if ( self.doDET == True ) and ( self.doDET_NO == True ):
+                RDMeigenvals, RDMeigenvecs = np.linalg.eigh( IMP_1RDM[ :numImpOrbs, :numImpOrbs ] )
+                self.NOvecs.append( RDMeigenvecs )
+                self.NOdiag.append( RDMeigenvals )
+        
+        if ( self.doDET == True ) and ( self.doDET_NO == True ):
+            self.NOrotation = self.constructNOrotation()
+        
         Nelectrons = 0.0
         for counter in range( maxiter ):
             Nelectrons += np.trace( self.imp_1RDM[counter][ :self.imp_size[counter], :self.imp_size[counter] ] )
@@ -201,6 +216,22 @@ class dmet:
             self.energy = self.energy * len( self.impClust )
         self.energy += self.ints.const()
         return Nelectrons
+        
+    def constructNOrotation( self ):
+    
+        myNOrotation = np.zeros( [ self.umat.shape[0], self.umat.shape[0] ], dtype=float )
+        jumpsquare = 0
+        for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
+            myNOrotation[ jumpsquare : jumpsquare + self.imp_size[ count ], jumpsquare : jumpsquare + self.imp_size[ count ] ] = self.NOvecs[ count ]
+            jumpsquare += self.imp_size[ count ]
+        if ( self.TransInv == True ):
+            size = self.imp_size[ 0 ]
+            for it in range( 1, self.Norb / size ):
+                myNOrotation[ it*size:(it+1)*size, it*size:(it+1)*size ] = myNOrotation[ 0:size, 0:size ]
+        '''if True:
+            assert ( np.linalg.norm( np.dot( myNOrotation.T, myNOrotation ) - np.eye( self.umat.shape[0] ) ) < 1e-10 )
+            assert ( np.linalg.norm( np.dot( myNOrotation, myNOrotation.T ) - np.eye( self.umat.shape[0] ) ) < 1e-10 )'''
+        return myNOrotation
         
     def costfunction( self, newumatflat ):
 
@@ -219,16 +250,14 @@ class dmet:
     
         start_func = time.time()
     
-        newumatsquare = self.flat2square( newumatflat )
-        OneRDM = self.helper.construct1RDM_loc( self.doSCF, newumatsquare )
+        newumatsquare_loc = self.flat2square( newumatflat )
+        OneRDM_loc = self.helper.construct1RDM_loc( self.doSCF, newumatsquare_loc )
         
         thesize = 0
         for localsize in self.imp_size:
-            if ( self.doDET == True ): # Do density embedding theory
-                if ( self.fitImpBath == True ):
-                    thesize += 2 * localsize
-                else:
-                    thesize += localsize
+            if ( self.doDET == True ): # Do density embedding theory: fit only impurity
+                thesize += localsize
+                assert ( self.fitImpBath == False )
             else: # Do density MATRIX embedding theory
                 if ( self.fitImpBath == True ):
                     thesize += 4 * localsize * localsize
@@ -239,13 +268,16 @@ class dmet:
         jump = 0
         for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
             if ( self.fitImpBath == True ):
-                mf_1RDM = np.dot( np.dot( self.dmetOrbs[ count ].T, OneRDM ), self.dmetOrbs[ count ] )
+                mf_1RDM = np.dot( np.dot( self.dmetOrbs[ count ].T, OneRDM_loc ), self.dmetOrbs[ count ] )
                 ed_1RDM = self.imp_1RDM[count]
             else:
-                mf_1RDM = (OneRDM[:,self.impClust[count]==1])[self.impClust[count]==1,:]
+                mf_1RDM = (OneRDM_loc[:,self.impClust[count]==1])[self.impClust[count]==1,:]
                 ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
             if ( self.doDET == True ): # Do density embedding theory
-                theerror = np.diag( mf_1RDM - ed_1RDM )
+                if ( self.doDET_NO == True ): # Work in the NO basis
+                    theerror = np.diag( np.dot( np.dot( self.NOvecs[ count ].T, mf_1RDM ), self.NOvecs[ count ] ) ) - self.NOdiag[ count ]
+                else: # Work in the lattice basis
+                    theerror = np.diag( mf_1RDM - ed_1RDM )
                 errors[ jump : jump + len( theerror ) ] = theerror
                 jump += len( theerror )
             else: # Do density MATRIX embedding theory
@@ -264,16 +296,14 @@ class dmet:
         
         start_grad = time.time()
         
-        newumatsquare = self.flat2square( newumatflat )
-        OneRDM, RDMderivs = self.helper.construct1RDM_loc_response_c( self.doSCF, newumatsquare )
+        newumatsquare_loc = self.flat2square( newumatflat )
+        RDMderivs_rot = self.helper.construct1RDM_response( self.doSCF, newumatsquare_loc, self.NOrotation )
         
         thesize = 0
         for localsize in self.imp_size:
-            if ( self.doDET == True ): # Do density embedding theory
-                if ( self.fitImpBath == True ):
-                    thesize += 2 * localsize
-                else:
-                    thesize += localsize
+            if ( self.doDET == True ): # Do density embedding theory: fit only impurity
+                thesize += localsize
+                assert ( self.fitImpBath == False )
             else: # Do density MATRIX embedding theory
                 if ( self.fitImpBath == True ):
                     thesize += 4 * localsize * localsize
@@ -284,11 +314,17 @@ class dmet:
         for countgr in range( len( newumatflat ) ):
             error_deriv = np.zeros( [ thesize ], dtype=float )
             jump = 0
+            jumpsquare = 0
             for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
                 if ( self.fitImpBath == True ):
-                    local_derivative = np.dot( np.dot( self.dmetOrbs[ count ].T, RDMderivs[ countgr, :, : ] ), self.dmetOrbs[ count ] )
+                    local_derivative = np.dot( np.dot( self.dmetOrbs[ count ].T, RDMderivs_rot[ countgr, :, : ] ), self.dmetOrbs[ count ] )
                 else:
-                    local_derivative = ((RDMderivs[ countgr, :, : ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
+                    if ( self.doDET == True ) and ( self.doDET_NO == True ):
+                        local_derivative = (RDMderivs_rot[ countgr, :, : ])[ jumpsquare : jumpsquare + self.imp_size[ count ], \
+                                                                             jumpsquare : jumpsquare + self.imp_size[ count ] ]
+                        jumpsquare += self.imp_size[ count ]
+                    else:
+                        local_derivative = ((RDMderivs_rot[ countgr, :, : ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
                 if ( self.doDET == True ): # Do density embedding theory
                     local_derivative = np.diag( local_derivative )
                     error_deriv[ jump : jump + len( local_derivative ) ] = local_derivative
@@ -356,7 +392,17 @@ class dmet:
                 umatsquare_bis += umatflat[ cnt ] * self.helper.list_H1[ cnt ]
             print "Verification flat2square = ", np.linalg.norm( umatsquare - umatsquare_bis )'''
         
+        if ( self.NOrotation != None ):
+            umatsquare = np.dot( np.dot( self.NOrotation, umatsquare ), self.NOrotation.T )
         return umatsquare
+        
+    def square2flat( self, umatsquare ):
+    
+        umatsquare_bis = np.array( umatsquare, copy=True )
+        if ( self.NOrotation != None ):
+            umatsquare_bis = np.dot( np.dot( self.NOrotation.T, umatsquare_bis ), self.NOrotation )
+        umatflat = umatsquare_bis[ self.mask ]
+        return umatflat
         
     def numeleccostfunction( self, chempot_imp ):
         
@@ -381,28 +427,23 @@ class dmet:
             
             # Find the chemical potential for the correlated impurity problem
             start_ed = time.time()
-            if ( self.doDET == True ):
-                self.doexact()
-            else:
-                self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
-                print "   Chemical potential =", self.mu_imp
+            self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+            print "   Chemical potential =", self.mu_imp
             stop_ed = time.time()
             self.time_ed += ( stop_ed - start_ed )
             print "   Energy =", self.energy
-            #self.verify_gradient( self.umat[ self.mask ] ) # Only works for self.doSCF == False!!
-            #self.hessian_eigenvalues( self.umat[ self.mask ] )
+            self.verify_gradient( self.square2flat( self.umat ) ) # Only works for self.doSCF == False!!
             
             # Solve for the u-matrix
             start_cf = time.time()
             if ( self.leastsq == True ):
-                result = optimize.leastsq( self.rdm_differences, self.umat[ self.mask ], Dfun=self.rdm_differences_derivative, factor=0.1 )
+                result = optimize.leastsq( self.rdm_differences, self.square2flat( self.umat ), Dfun=self.rdm_differences_derivative, factor=0.1 )
                 self.umat = self.flat2square( result[ 0 ] )
             else:
-                result = optimize.minimize( self.costfunction, self.umat[ self.mask ], jac=self.costfunction_derivative, options={'disp': False} )
+                result = optimize.minimize( self.costfunction, self.square2flat( self.umat ), jac=self.costfunction_derivative, options={'disp': False} )
                 self.umat = self.flat2square( result.x )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
-            print "   Cost function after convergence =", self.costfunction( self.umat[ self.mask ] )
-            #self.hessian_eigenvalues( self.umat[ self.mask ] )
+            print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
             stop_cf = time.time()
             self.time_cf += ( stop_cf - start_cf )
             

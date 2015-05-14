@@ -28,7 +28,7 @@ import rhf
 import localintegrals
 from pyscf import ao2mo
 
-def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, printoutput=True ):
+def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, printoutput=False ):
 
     # Killing output if necessary
     if ( printoutput==False ):

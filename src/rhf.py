@@ -18,7 +18,7 @@
 '''
 
 import numpy as np
-import scipy.linalg
+import scipy.sparse.linalg
 from pyscf import gto, scf, ao2mo
 
 def solve_ERI( OEI, TEI, DMguess, numPairs ):
@@ -33,12 +33,11 @@ def solve_ERI( OEI, TEI, DMguess, numPairs ):
     mf.get_hcore = lambda *args: OEI
     mf.get_ovlp = lambda *args: np.eye( L )
     mf._eri = ao2mo.restore(8, TEI, L)
-    mf.max_cycle = 500
-    mf.damp_factor = 0.33
     
     mf.scf( DMguess )
-    assert( mf.converged == True )
     DMloc = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )
+    if ( mf.converged == False ):
+        DMloc = solve_ERI_NR( OEI, TEI, DMguess, numPairs )
     return DMloc
     
 def wrap_my_jk( mol_orig, ao2basis ): # mol_orig works in ao
@@ -87,5 +86,65 @@ def solve_JK( OEI, mol_orig, ao2basis, DMguess, numPairs ):
     
     mf.scf( DMguess )
     DMloc = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )
+    return DMloc
+    
+def wrap_AH( FOCKmo, numPairs, numVirt ):
+
+    def matvec( vector ):
+
+        xblock  = np.reshape( vector[:-1], ( numPairs, numVirt ), order='F' )
+        xscalar = vector[ len(vector)-1 ]
+    
+        outblock  = 4 * FOCKmo[:numPairs,numPairs:] * xscalar \
+                  + 4 * np.dot( xblock, FOCKmo[numPairs:,numPairs:] ) \
+                  - 4 * np.dot( FOCKmo[:numPairs,:numPairs], xblock )
+    
+        result = np.zeros( [ len(vector) ], dtype=float )
+        result[ len(vector)-1 ] = 4 * np.einsum( 'ij,ij->', xblock, FOCKmo[:numPairs,numPairs:] )
+        result[ :-1 ] = np.reshape( outblock, ( numPairs * numVirt ), order='F' )
+    
+        return result
+        
+    return matvec
+    
+def solve_ERI_NR( OEI, TEI, DMguess, numPairs ):
+
+    numVirt = OEI.shape[0] - numPairs
+
+    FOCKloc            = OEI + np.einsum( 'ijkl,kl->ij', TEI, DMguess ) - 0.5 * np.einsum( 'ijkl,jl->ik', TEI, DMguess )
+    energies, orbitals = np.linalg.eigh( FOCKloc )
+    idx                = energies.argsort()
+    energies           = energies[idx]
+    orbitals           = orbitals[:,idx]
+    
+    DMloc        = 2 * np.dot( orbitals[:,:numPairs], orbitals[:,:numPairs].T )
+    FOCKloc      = OEI + np.einsum( 'ijkl,kl->ij', TEI, DMloc ) - 0.5 * np.einsum( 'ijkl,jl->ik', TEI, DMloc )
+    FOCKmo       = np.dot( np.dot( orbitals.T, FOCKloc ), orbitals )
+    gradientnorm = 4 * np.linalg.norm( FOCKmo[:numPairs,numPairs:] )
+    
+    while ( gradientnorm > 1e-8 ):
+    
+        # Solve for update
+        AugmentedHessian = scipy.sparse.linalg.LinearOperator( ( numPairs * numVirt + 1, numPairs * numVirt + 1 ), wrap_AH( FOCKmo, numPairs, numVirt ), dtype=float )
+        ini_guess = np.ones( [ numPairs * numVirt + 1 ], dtype=float )
+        for occ in range( numPairs ):
+            for virt in range( numVirt ):
+                ini_guess[ occ + numPairs * virt ] = - FOCKmo[ occ, numPairs + virt ] / max( FOCKmo[ numPairs + virt, numPairs + virt ] - FOCKmo[ occ, occ ], 1e-6 )
+        eigenval, eigenvec = scipy.sparse.linalg.eigsh(AugmentedHessian, k=1, which='SA', v0=ini_guess)
+        eigenvec = eigenvec * ( 1.0 / eigenvec[ len(eigenvec) - 1 ] )
+        update = np.reshape( eigenvec[:-1], ( numPairs, numVirt ), order='F' )
+        xmat   = np.zeros( [ OEI.shape[0], OEI.shape[0] ], dtype=float )
+        xmat[:numPairs,numPairs:] = - update
+        xmat[numPairs:,:numPairs] = update.T
+        unitary = scipy.linalg.expm( xmat )
+        orbitals = np.dot( orbitals, unitary )
+        DMloc        = 2 * np.dot( orbitals[:,:numPairs], orbitals[:,:numPairs].T )
+        FOCKloc      = OEI + np.einsum( 'ijkl,kl->ij', TEI, DMloc ) - 0.5 * np.einsum( 'ijkl,jl->ik', TEI, DMloc )
+        FOCKmo       = np.dot( np.dot( orbitals.T, FOCKloc ), orbitals )
+        gradientnorm = 4 * np.linalg.norm( FOCKmo[:numPairs,numPairs:] )
+        Energy       = 0.5 * np.einsum( 'ij,ij->', OEI + FOCKloc, DMloc )
+        print "RHF energy =", Energy
+        print "grad-norm  =", gradientnorm
+    
     return DMloc
     

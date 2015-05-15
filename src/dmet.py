@@ -42,8 +42,8 @@ class dmet:
         self.TransInv   = isTranslationInvariant
         self.leastsq    = True
         self.fitImpBath = True
-        self.doDET      = True
-        self.doDET_NO   = True
+        self.doDET      = False
+        self.doDET_NO   = False
         self.NOrotation = None
         
         if ( self.doDET == True ):

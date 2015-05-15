@@ -96,7 +96,7 @@ for item in impurityClusters:
     totalcount += item
 assert ( np.linalg.norm( totalcount - np.ones( [ mol.nao_nr() ], dtype=float ) ) < 1e-12 )
 
-method = 'MP2'
+method = 'CC'
 isTranslationInvariant = False
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method )
 theDMET.doselfconsistent()

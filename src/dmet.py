@@ -19,18 +19,20 @@
 
 import localintegrals
 import qcdmethelper
+import line_min
 import numpy as np
 from scipy import optimize
 import time
 
 class dmet:
 
-    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED' ):
+    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED', SCmethod='LINE' ):
     
         if ( isTranslationInvariant == True ):
             assert( theInts.TI_OK == True )
         
         assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
+        assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'LINE' ) or ( SCmethod == 'BFGS' ))
         
         self.ints     = theInts
         self.Norb     = self.ints.Norbs
@@ -40,7 +42,7 @@ class dmet:
         self.method     = method
         self.doSCF      = False
         self.TransInv   = isTranslationInvariant
-        self.leastsq    = True
+        self.SCmethod   = SCmethod
         self.fitImpBath = True
         self.doDET      = False
         self.doDET_NO   = False
@@ -432,16 +434,19 @@ class dmet:
             stop_ed = time.time()
             self.time_ed += ( stop_ed - start_ed )
             print "   Energy =", self.energy
-            self.verify_gradient( self.square2flat( self.umat ) ) # Only works for self.doSCF == False!!
+            # self.verify_gradient( self.square2flat( self.umat ) ) # Only works for self.doSCF == False!!
             
             # Solve for the u-matrix
             start_cf = time.time()
-            if ( self.leastsq == True ):
+            if ( self.SCmethod == 'LSTSQ' ):
                 result = optimize.leastsq( self.rdm_differences, self.square2flat( self.umat ), Dfun=self.rdm_differences_derivative, factor=0.1 )
                 self.umat = self.flat2square( result[ 0 ] )
-            else:
+            if ( self.SCmethod == 'BFGS' ):
                 result = optimize.minimize( self.costfunction, self.square2flat( self.umat ), jac=self.costfunction_derivative, options={'disp': False} )
                 self.umat = self.flat2square( result.x )
+            if ( self.SCmethod == 'LINE' ):
+                result = line_min.optimize( self.rdm_differences, self.rdm_differences_derivative, self.square2flat( self.umat ) )
+                self.umat = self.flat2square( result )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
             print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
             stop_cf = time.time()

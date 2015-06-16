@@ -58,7 +58,10 @@ class dmet:
         self.print_u   = True
         self.print_rdm = True
         
-        self.testclusters()
+        allOne = self.testclusters()
+        if ( allOne == False ): # One or more impurities which do not cover the entire system
+            assert( self.TransInv == False ) # Make sure that you don't work translational invariant
+            # Note on working with impurities which do no tile the entire system: they should be the first orbitals in the Hamiltonian!
         
         self.energy   = 0.0
         self.imp_1RDM = []
@@ -80,8 +83,10 @@ class dmet:
         quicktest = np.zeros([ self.Norb ], dtype=int)
         for item in self.impClust:
             quicktest += item
-        for numcounts in quicktest:
-            assert( numcounts == 1 )
+        assert( np.all( quicktest >= 0 ) )
+        assert( np.all( quicktest <= 1 ) )
+        allOne = np.all( quicktest == 1 )
+        return allOne
             
     def make_imp_size( self ):
     
@@ -170,6 +175,8 @@ class dmet:
         maxiter = len( self.impClust )
         if ( self.TransInv == True ):
             maxiter = 1
+            
+        remainingOrbs = np.ones( [ len( self.impClust[ 0 ] ) ], dtype=float )
         
         for counter in range( maxiter ):
         
@@ -206,11 +213,24 @@ class dmet:
                 RDMeigenvals, RDMeigenvecs = np.linalg.eigh( IMP_1RDM[ :numImpOrbs, :numImpOrbs ] )
                 self.NOvecs.append( RDMeigenvecs )
                 self.NOdiag.append( RDMeigenvals )
+                
+            remainingOrbs -= impurityOrbs
         
         if ( self.doDET == True ) and ( self.doDET_NO == True ):
             self.NOrotation = self.constructNOrotation()
-        
+            
+        # When an incomplete impurity tiling is used for the Hamiltonian, self.energy should be augmented with the remaining HF part
         Nelectrons = 0.0
+        if ( np.sum( remainingOrbs ) != 0 ):
+            transfo = np.eye( self.Norb, dtype=float )
+            totalOEI  = self.ints.dmet_oei(  transfo, self.Norb )
+            totalFOCK = self.ints.dmet_fock( transfo, self.Norb, OneRDM )
+            self.energy += 0.5 * np.einsum( 'ij,ij->', OneRDM[remainingOrbs==1,:], \
+                     totalOEI[remainingOrbs==1,:] + totalFOCK[remainingOrbs==1,:] )
+            Nelectrons = np.trace( (OneRDM[remainingOrbs==1,:])[:,remainingOrbs==1] )
+            remainingOrbs[ remainingOrbs==1 ] -= 1
+        assert( np.all( remainingOrbs == 0 ) )
+        
         for counter in range( maxiter ):
             Nelectrons += np.trace( self.imp_1RDM[counter][ :self.imp_size[counter], :self.imp_size[counter] ] )
         if ( self.TransInv == True ):
@@ -221,11 +241,13 @@ class dmet:
         
     def constructNOrotation( self ):
     
-        myNOrotation = np.zeros( [ self.umat.shape[0], self.umat.shape[0] ], dtype=float )
+        myNOrotation = np.zeros( [ self.Norb, self.Norb ], dtype=float )
         jumpsquare = 0
         for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
             myNOrotation[ jumpsquare : jumpsquare + self.imp_size[ count ], jumpsquare : jumpsquare + self.imp_size[ count ] ] = self.NOvecs[ count ]
             jumpsquare += self.imp_size[ count ]
+        for count in range( jumpsquare, self.Norb ):
+            myNOrotation[ count, count ] = 1.0
         if ( self.TransInv == True ):
             size = self.imp_size[ 0 ]
             for it in range( 1, self.Norb / size ):
@@ -322,8 +344,8 @@ class dmet:
                     local_derivative = np.dot( np.dot( self.dmetOrbs[ count ].T, RDMderivs_rot[ countgr, :, : ] ), self.dmetOrbs[ count ] )
                 else:
                     if ( self.doDET == True ) and ( self.doDET_NO == True ):
-                        local_derivative = (RDMderivs_rot[ countgr, :, : ])[ jumpsquare : jumpsquare + self.imp_size[ count ], \
-                                                                             jumpsquare : jumpsquare + self.imp_size[ count ] ]
+                        local_derivative = RDMderivs_rot[ countgr, jumpsquare : jumpsquare + self.imp_size[ count ],\
+                                                                   jumpsquare : jumpsquare + self.imp_size[ count ] ]
                         jumpsquare += self.imp_size[ count ]
                     else:
                         local_derivative = ((RDMderivs_rot[ countgr, :, : ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
@@ -425,7 +447,7 @@ class dmet:
             iteration += 1
             print "DMET iteration", iteration
             umat_old = np.array( self.umat, copy=True )
-            rdm_old = self.transform_ed_1rdm()
+            rdm_old = self.transform_ed_1rdm() # At the very first iteration, this matrix will be zero
             
             # Find the chemical potential for the correlated impurity problem
             start_ed = time.time()

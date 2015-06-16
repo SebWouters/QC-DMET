@@ -79,23 +79,11 @@ if ( mol.basis == 'sto-3g' ):
     unit_sizes = np.array([ 13, 7, 7, 7, 7, 7, 7, 7, 7, 8 ]) # 1 CH2OH, 8 CH2, and 1 CH3
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
-carbons_in_cluster = 1
-units_counter = 0
-orbitals_counter = 0
-
+carbons_in_cluster = 2
 impurityClusters = []
-while ( units_counter < len( unit_sizes ) ):
-    impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
-    for unit in range( units_counter, min( len( unit_sizes ), units_counter + carbons_in_cluster ) ):
-        impurities[ orbitals_counter : orbitals_counter + unit_sizes[ unit ] ] = 1
-        orbitals_counter += unit_sizes[ unit ]
-    units_counter += carbons_in_cluster
-    impurityClusters.append( impurities )
-
-totalcount = np.zeros( [ mol.nao_nr() ], dtype=int )
-for item in impurityClusters:
-    totalcount += item
-assert ( np.linalg.norm( totalcount - np.ones( [ mol.nao_nr() ], dtype=float ) ) < 1e-12 )
+impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
+impurities[ : np.sum( unit_sizes[ : carbons_in_cluster ] ) ] = 1
+impurityClusters.append( impurities )
 
 method = 'CC'
 isTranslationInvariant = False

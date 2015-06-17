@@ -26,7 +26,7 @@ import time
 
 class dmet:
 
-    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED', SCmethod='LINE' ):
+    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED', SCmethod='LSTSQ' ):
     
         if ( isTranslationInvariant == True ):
             assert( theInts.TI_OK == True )
@@ -218,9 +218,16 @@ class dmet:
         
         if ( self.doDET == True ) and ( self.doDET_NO == True ):
             self.NOrotation = self.constructNOrotation()
+        
+        Nelectrons = 0.0
+        for counter in range( maxiter ):
+            Nelectrons += np.trace( self.imp_1RDM[counter][ :self.imp_size[counter], :self.imp_size[counter] ] )
+        if ( self.TransInv == True ):
+            Nelectrons = Nelectrons * len( self.impClust )
+            self.energy = self.energy * len( self.impClust )
+            remainingOrbs[:] = 0
             
         # When an incomplete impurity tiling is used for the Hamiltonian, self.energy should be augmented with the remaining HF part
-        Nelectrons = 0.0
         if ( np.sum( remainingOrbs ) != 0 ):
             transfo = np.eye( self.Norb, dtype=float )
             totalOEI  = self.ints.dmet_oei(  transfo, self.Norb )
@@ -230,12 +237,7 @@ class dmet:
             Nelectrons = np.trace( (OneRDM[remainingOrbs==1,:])[:,remainingOrbs==1] )
             remainingOrbs[ remainingOrbs==1 ] -= 1
         assert( np.all( remainingOrbs == 0 ) )
-        
-        for counter in range( maxiter ):
-            Nelectrons += np.trace( self.imp_1RDM[counter][ :self.imp_size[counter], :self.imp_size[counter] ] )
-        if ( self.TransInv == True ):
-            Nelectrons = Nelectrons * len( self.impClust )
-            self.energy = self.energy * len( self.impClust )
+            
         self.energy += self.ints.const()
         return Nelectrons
         

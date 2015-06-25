@@ -24,8 +24,10 @@ from pyscf import gto, scf
 import numpy as np
 import math as m
 
-b1 = 1.263
-b2 = 1.132
+factor = 1.0
+
+b1 = 1.263 * factor
+b2 = 1.132 * factor
 nat = 16
 
 sine  = np.sin( 2 * np.pi / nat )
@@ -55,8 +57,7 @@ mf.scf()
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'george.molden' )
 
-#Imp size : 1 Li
-atoms_per_imp = 1
+atoms_per_imp = 1 # Impurity size = 1 C atom
 assert ( nat % atoms_per_imp == 0 )
 orbs_per_imp = mol.nao_nr() * atoms_per_imp / nat
 
@@ -68,7 +69,8 @@ for cluster in range( nat / atoms_per_imp ):
     impurityClusters.append( impurities )
 isTranslationInvariant = True
 method = 'CC'
-theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method )
+SCmethod = 'NONE' #Don't do it self-consistently
+theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
 theDMET.doselfconsistent()
 
 

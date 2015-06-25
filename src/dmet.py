@@ -32,7 +32,7 @@ class dmet:
             assert( theInts.TI_OK == True )
         
         assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
-        assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'LINE' ) or ( SCmethod == 'BFGS' ))
+        assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'LINE' ) or ( SCmethod == 'BFGS' ) or ( SCmethod == 'NONE' ))
         
         self.ints     = theInts
         self.Norb     = self.ints.Norbs
@@ -489,7 +489,8 @@ class dmet:
             print "   2-norm of difference old and new 1-RDM =", rdm_diff
             print "******************************************************"
             
-            #u_diff = 0.1 * convergence_threshold # Do only 1 iteration
+            if ( self.SCmethod == 'NONE' ):
+                u_diff = 0.1 * convergence_threshold # Do only 1 iteration
         
         print "Time cf func =", self.time_func
         print "Time cf grad =", self.time_grad

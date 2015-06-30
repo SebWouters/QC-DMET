@@ -27,8 +27,8 @@ import math as m
 
 factor = 1.0
 
-b1 = 1.263 * factor
-b2 = 1.132 * factor
+b1 = 1.132 * factor
+b2 = 1.263 * factor
 nat = 16
 
 sine  = np.sin( 2 * np.pi / nat )

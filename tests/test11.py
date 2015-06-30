@@ -26,8 +26,8 @@ import math as m
 
 factor = 1.0
 
-b1 = 1.263 * factor
-b2 = 1.132 * factor
+b1 = 1.132 * factor
+b2 = 1.263 * factor
 nat = 16
 
 sine  = np.sin( 2 * np.pi / nat )
@@ -44,7 +44,7 @@ for i in range( nat / 2 ):
     mol.atom.append(('C', (R * np.cos(angle        ), R * np.sin(angle        ), 0.0)))
     mol.atom.append(('C', (R * np.cos(angle + alpha), R * np.sin(angle + alpha), 0.0)))
     angle += 4.0 * np.pi / nat
-
+    
 mol.basis = 'sto-3g'
 #mol.basis = 'cc-pvdz'
 #mol.basis = 'cc-pvtz'

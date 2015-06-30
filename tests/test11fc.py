@@ -20,7 +20,8 @@
 import sys
 sys.path.append('../src')
 import localintegrals, dmet
-from pyscf import gto, scf
+from pyscf import gto, scf, tools
+from pyscf.tools import molden, localizer
 import numpy as np
 import math as m
 
@@ -36,7 +37,7 @@ R     = np.sqrt( 0.25 * b1 * b1 + ( ( b2 + b1 * cosin ) / ( 2 * sine ) ) ** 2 )
 alpha = 2 * np.arcsin( 0.5 * b1 / R )
 
 mol = gto.Mole()
-mol.verbose = 0
+mol.verbose = 5 # To print stuff during localization
 mol.atom = []
 
 angle = 0.0
@@ -54,8 +55,12 @@ mf = scf.RHF( mol )
 mf.verbose = 3
 mf.scf()
 
-myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
-myInts.molden( 'george.molden' )
+#with open( 'george-rhf.molden', 'w' ) as thefile:
+#    molden.header( mol, thefile )
+#    molden.orbital_coeff( mol, thefile, mf.mo_coeff )
+
+myInts = localintegrals.localintegrals( mf, range( nat, mol.nao_nr() ), 'boys' )
+myInts.molden( 'george-fc.molden' )
 
 atoms_per_imp = 1 # Impurity size = 1 C atom
 assert ( nat % atoms_per_imp == 0 )
@@ -67,7 +72,7 @@ for cluster in range( nat / atoms_per_imp ):
     for orb in range( orbs_per_imp ):
         impurities[ orbs_per_imp*cluster + orb ] = 1
     impurityClusters.append( impurities )
-isTranslationInvariant = True
+isTranslationInvariant = False # Because of Boys in C1
 method = 'CC'
 SCmethod = 'NONE' #Don't do it self-consistently
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )

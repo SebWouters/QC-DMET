@@ -182,6 +182,15 @@ class dmet:
         
             impurityOrbs = self.impClust[ counter ]
             loc2dmet, core1RDM_dmet = self.helper.constructbath( OneRDM, impurityOrbs )
+            for cnt in range(len(core1RDM_dmet)):
+                if ( core1RDM_dmet[ cnt ] < 0.01 ):
+                    core1RDM_dmet[ cnt ] = 0.0
+                elif ( core1RDM_dmet[ cnt ] > 1.99 ):
+                    core1RDM_dmet[ cnt ] = 2.0
+                else:
+                    print "Bad DMET bath orbital selection: trying to put a bath orbital with occupation", core1RDM_dmet[ cnt ], "into the environment :-(."
+                    assert( 0 == 1 )
+            Nelec_in_imp = int(round(self.ints.Nelec - np.sum( core1RDM_dmet )))
             core1RDM_loc = np.dot( np.dot( loc2dmet, np.diag( core1RDM_dmet ) ), loc2dmet.T )
             
             numImpOrbs = np.sum( impurityOrbs )
@@ -191,9 +200,6 @@ class dmet:
             dmetFOCK = self.ints.dmet_fock( loc2dmet, 2*numImpOrbs, core1RDM_loc )
             dmetTEI  = self.ints.dmet_tei(  loc2dmet, 2*numImpOrbs )
             
-            Nelec_in_imp = 2*numImpOrbs
-            if ( Nelec_in_imp > self.ints.Nelec ):
-                Nelec_in_imp = self.ints.Nelec
             if ( self.method == 'ED' ):
                 import chemps2
                 IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )

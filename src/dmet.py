@@ -200,6 +200,7 @@ class dmet:
             dmetFOCK = self.ints.dmet_fock( loc2dmet, 2*numImpOrbs, core1RDM_loc )
             dmetTEI  = self.ints.dmet_tei(  loc2dmet, 2*numImpOrbs )
             
+            print "DMET::exact : Performing a (", 2*numImpOrbs, "orb,", Nelec_in_imp, "el ) DMET active space calculation."
             if ( self.method == 'ED' ):
                 import chemps2
                 IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
@@ -528,4 +529,12 @@ class dmet:
             result[ squarejumper:squarejumper+localsize , squarejumper:squarejumper+localsize ] = self.imp_1RDM[ count ][ :localsize , :localsize ]
             squarejumper += localsize
         return result
+        
+    def dump_bath_orbs( self, filename, impnumber=0 ):
+        
+        from pyscf import tools
+        from pyscf.tools import molden
+        with open( filename, 'w' ) as thefile:
+            molden.header( self.ints.mol, thefile )
+            molden.orbital_coeff( self.ints.mol, thefile, np.dot( self.ints.ao2loc, self.dmetOrbs[impnumber] ) )
         

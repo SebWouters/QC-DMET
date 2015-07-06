@@ -72,5 +72,6 @@ method = 'CC'
 SCmethod = 'NONE' #Don't do it self-consistently
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
 theDMET.doselfconsistent()
+theDMET.dump_bath_orbs( 'test11-bathorbs.molden' )
 
 

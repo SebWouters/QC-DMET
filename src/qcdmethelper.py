@@ -109,7 +109,7 @@ class qcdmethelper:
         OneDM = 2 * np.dot( eigenvecs[:,:myNumPairs] , eigenvecs[:,:myNumPairs].T )
         return OneDM
         
-    def constructbath( self, OneDM, impurityOrbs ):
+    def constructbath( self, OneDM, impurityOrbs, threshold=1e-13 ):
     
         embeddingOrbs = 1 - impurityOrbs
         embeddingOrbs = np.matrix( embeddingOrbs )
@@ -125,6 +125,10 @@ class qcdmethelper:
         
         eigenvals, eigenvecs = np.linalg.eigh( embedding1RDM )
         idx = np.maximum( -eigenvals, eigenvals - 2.0 ).argsort() # Occupation numbers closest to 1 come first
+        tokeep = np.sum( -np.maximum( -eigenvals, eigenvals - 2.0 )[idx] > threshold )
+        if ( tokeep < numBathOrbs ):
+            print "DMET::constructbath : Throwing out", numBathOrbs - tokeep, "orbitals which are within", threshold, "of 0 or 2."
+        numBathOrbs = min(np.sum( tokeep ), numBathOrbs)
         eigenvals = eigenvals[idx]
         eigenvecs = eigenvecs[:,idx]
         pureEnvironEigVals = -eigenvals[numBathOrbs:]
@@ -150,5 +154,5 @@ class qcdmethelper:
         # eigenvecs[ : , 0:numImpOrbs ]                      = impurity orbitals
         # eigenvecs[ : , numImpOrbs:numImpOrbs+numBathOrbs ] = bath orbitals
         # eigenvecs[ : , numImpOrbs+numBathOrbs: ]           = pure environment orbitals in decreasing order of occupation number
-        return ( eigenvecs, coreOccupations )
+        return ( numBathOrbs, eigenvecs, coreOccupations )
         

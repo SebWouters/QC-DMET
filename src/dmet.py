@@ -181,7 +181,8 @@ class dmet:
         for counter in range( maxiter ):
         
             impurityOrbs = self.impClust[ counter ]
-            loc2dmet, core1RDM_dmet = self.helper.constructbath( OneRDM, impurityOrbs )
+            numImpOrbs   = np.sum( impurityOrbs )
+            numBathOrbs, loc2dmet, core1RDM_dmet = self.helper.constructbath( OneRDM, impurityOrbs )
             for cnt in range(len(core1RDM_dmet)):
                 if ( core1RDM_dmet[ cnt ] < 0.01 ):
                     core1RDM_dmet[ cnt ] = 0.0
@@ -190,30 +191,31 @@ class dmet:
                 else:
                     print "Bad DMET bath orbital selection: trying to put a bath orbital with occupation", core1RDM_dmet[ cnt ], "into the environment :-(."
                     assert( 0 == 1 )
+
+            Norb_in_imp  = numImpOrbs + numBathOrbs
             Nelec_in_imp = int(round(self.ints.Nelec - np.sum( core1RDM_dmet )))
             core1RDM_loc = np.dot( np.dot( loc2dmet, np.diag( core1RDM_dmet ) ), loc2dmet.T )
             
-            numImpOrbs = np.sum( impurityOrbs )
-            self.dmetOrbs.append( loc2dmet[ :, :2*numImpOrbs ] ) # Impurity and bath orbitals only
-            assert( 2*numImpOrbs <= self.Norb )
-            dmetOEI  = self.ints.dmet_oei(  loc2dmet, 2*numImpOrbs )
-            dmetFOCK = self.ints.dmet_fock( loc2dmet, 2*numImpOrbs, core1RDM_loc )
-            dmetTEI  = self.ints.dmet_tei(  loc2dmet, 2*numImpOrbs )
+            self.dmetOrbs.append( loc2dmet[ :, :Norb_in_imp ] ) # Impurity and bath orbitals only
+            assert( Norb_in_imp <= self.Norb )
+            dmetOEI  = self.ints.dmet_oei(  loc2dmet, Norb_in_imp )
+            dmetFOCK = self.ints.dmet_fock( loc2dmet, Norb_in_imp, core1RDM_loc )
+            dmetTEI  = self.ints.dmet_tei(  loc2dmet, Norb_in_imp )
             
-            print "DMET::exact : Performing a (", 2*numImpOrbs, "orb,", Nelec_in_imp, "el ) DMET active space calculation."
+            print "DMET::exact : Performing a (", Norb_in_imp, "orb,", Nelec_in_imp, "el ) DMET active space calculation."
             if ( self.method == 'ED' ):
                 import chemps2
-                IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, chempot_imp )
             if ( self.method == 'CC' ):
                 import psi4cc
                 assert( Nelec_in_imp % 2 == 0 )
-                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, 2*numImpOrbs, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = psi4cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = psi4cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
             if ( self.method == 'MP2' ):
                 import pyscf_mp2
                 assert( Nelec_in_imp % 2 == 0 )
-                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, 2*numImpOrbs, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = pyscf_mp2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, 2*numImpOrbs, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = pyscf_mp2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
             if ( self.doDET == True ) and ( self.doDET_NO == True ):
@@ -287,15 +289,15 @@ class dmet:
         OneRDM_loc = self.helper.construct1RDM_loc( self.doSCF, newumatsquare_loc )
         
         thesize = 0
-        for localsize in self.imp_size:
+        for count in range(len(self.imp_size)):
             if ( self.doDET == True ): # Do density embedding theory: fit only impurity
-                thesize += localsize
+                thesize += self.imp_size[ count ]
                 assert ( self.fitImpBath == False )
             else: # Do density MATRIX embedding theory
                 if ( self.fitImpBath == True ):
-                    thesize += 4 * localsize * localsize
+                    thesize += self.dmetOrbs[count].shape[1] * self.dmetOrbs[count].shape[1]
                 else:
-                    thesize += localsize * localsize
+                    thesize += self.imp_size[ count ] * self.imp_size[ count ]
         errors = np.zeros( [ thesize ], dtype=float )
         
         jump = 0
@@ -333,15 +335,15 @@ class dmet:
         RDMderivs_rot = self.helper.construct1RDM_response( self.doSCF, newumatsquare_loc, self.NOrotation )
         
         thesize = 0
-        for localsize in self.imp_size:
+        for count in range(len(self.imp_size)):
             if ( self.doDET == True ): # Do density embedding theory: fit only impurity
-                thesize += localsize
+                thesize += self.imp_size[ count ]
                 assert ( self.fitImpBath == False )
             else: # Do density MATRIX embedding theory
                 if ( self.fitImpBath == True ):
-                    thesize += 4 * localsize * localsize
+                    thesize += self.dmetOrbs[count].shape[1] * self.dmetOrbs[count].shape[1]
                 else:
-                    thesize += localsize * localsize
+                    thesize += self.imp_size[ count ] * self.imp_size[ count ]
         
         gradient = []
         for countgr in range( len( newumatflat ) ):

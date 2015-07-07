@@ -326,7 +326,41 @@ class dmet:
         self.time_func += ( stop_func - start_func )
         
         return errors
+    '''    
+    def rdmdiff_hubbardstyle( self, newumatflat, oldumatflat, dmetFOCK, dmetTEI, DMguess, numPairs ):
+        
+        numImpOrbs = np.sum( self.impClust[ 0 ] )
+        umatdiff_square = self.flat2square( newumatflat - oldumatflat )
+        dmetFOCK[ :numImpOrbs, :numImpOrbs ] += umatdiff_square[ :numImpOrbs, :numImpOrbs ]
+        import rhf
+        new_1rdm = rhf.solve_ERI( dmetFOCK, dmetTEI, DMguess, numPairs )
+        theerror = new_1rdm - self.imp_1RDM[ 0 ]
+        if ( self.fitImpBath == False ):
+            theerror = theerror[ :numImpOrbs, :numImpOrbs ]
+        errors = np.reshape( theerror, theerror.shape[0] * theerror.shape[1], order='F' )
+        return errors
+        
+    def optimize_hubbardstyle( self ):
     
+        assert( self.TransInv == True  )
+        assert( self.doDET    == False )
+        
+        old_1rdm     = self.helper.construct1RDM_loc( self.doSCF, self.umat )
+        impurityOrbs = self.impClust[ 0 ]
+        numImpOrbs   = np.sum( impurityOrbs )
+        numBathOrbs, loc2dmet, core1RDM_dmet = self.helper.constructbath( old_1rdm, impurityOrbs )
+        
+        Norb_in_imp  = numImpOrbs + numBathOrbs
+        Nelec_in_imp = int(round(self.ints.Nelec - np.sum( core1RDM_dmet )))
+        assert ( Nelec_in_imp % 2 == 0 )
+        core1RDM_loc = np.dot( np.dot( loc2dmet, np.diag( core1RDM_dmet ) ), loc2dmet.T )
+        dmetFOCK     = self.ints.dmet_fock( loc2dmet, Norb_in_imp, core1RDM_loc )
+        dmetTEI      = self.ints.dmet_tei(  loc2dmet, Norb_in_imp )
+        DMguess      = np.dot(np.dot( loc2dmet[ :, :Norb_in_imp ].T, old_1rdm ), loc2dmet[ :, :Norb_in_imp ] )
+        
+        result = optimize.leastsq(self.rdmdiff_hubbardstyle, self.square2flat(self.umat), args=(self.square2flat(self.umat), dmetFOCK, dmetTEI, DMguess, Nelec_in_imp/2), factor=0.1)
+        return result
+    '''
     def rdm_differences_derivative( self, newumatflat ):
         
         start_grad = time.time()
@@ -473,6 +507,7 @@ class dmet:
             start_cf = time.time()
             if ( self.SCmethod == 'LSTSQ' ):
                 result = optimize.leastsq( self.rdm_differences, self.square2flat( self.umat ), Dfun=self.rdm_differences_derivative, factor=0.1 )
+                #result = self.optimize_hubbardstyle()
                 self.umat = self.flat2square( result[ 0 ] )
             if ( self.SCmethod == 'BFGS' ):
                 result = optimize.minimize( self.costfunction, self.square2flat( self.umat ), jac=self.costfunction_derivative, options={'disp': False} )

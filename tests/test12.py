@@ -23,17 +23,17 @@ import localintegrals, dmet
 from pyscf import gto, scf
 import numpy as np
 
-bondlength = 1.5
+bl = 2.0
 nat = 12
 mol = gto.Mole()
 mol.atom = []
-r = 0.5 * bondlength / np.sin(np.pi/nat)
+r = 0.5 * bl / np.sin(np.pi/nat)
 for i in range(nat):
     theta = i * (2*np.pi/nat)
-    mol.atom.append(('C', (r*np.cos(theta), r*np.sin(theta), 0)))
+    mol.atom.append(('Be', (r*np.cos(theta), r*np.sin(theta), 0)))
 
 mol.basis = 'cc-pvdz'
-mol.build(verbose=4)
+mol.build(verbose=0)
 
 mf = scf.RHF(mol)
 mf.verbose = 3
@@ -41,9 +41,9 @@ mf.max_cycle = 1000
 mf.scf()
 
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
-myInts.molden( 'Cring.molden' )
+myInts.molden( 'Beryllium-loc.molden' )
 
-atoms_per_imp = 2 # Impurity size = 1 C atom
+atoms_per_imp = 1 # Impurity size = 1/2/3/4/6/8 Be atoms
 assert ( nat % atoms_per_imp == 0 )
 orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 
@@ -55,9 +55,9 @@ for cluster in range( nat / atoms_per_imp ):
     impurityClusters.append( impurities )
 isTranslationInvariant = True
 method = 'CC'
-SCmethod = 'NONE' #Don't do it self-consistently
+SCmethod = 'LSTSQ'
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
 theDMET.doselfconsistent()
-theDMET.dump_bath_orbs( 'Cring-bathorbs.molden' )
+theDMET.dump_bath_orbs( 'Beryllium-bathorbs.molden' )
 
 

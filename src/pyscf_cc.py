@@ -47,6 +47,7 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, 
     mol.build( verbose=0 )
     mol.atom.append(('C', (0, 0, 0)))
     mol.nelectron = Nel
+    mol.incore_anyway = True
     mf = scf.RHF( mol )
     mf.get_hcore = lambda *args: FOCKcopy
     mf.get_ovlp = lambda *args: np.eye( Norb )

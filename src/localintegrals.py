@@ -118,13 +118,13 @@ class localintegrals:
             import chemps2
             GSenergy, GS_1DM = chemps2.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
         if ( method == 'CC' ):
-            import psi4cc
+            import pyscf_cc
             eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
             eigvecs = eigvecs[ :, eigvals.argsort() ]
             assert( self.Nelec % 2 == 0 )
             numPairs = self.Nelec / 2
             DMguessRHF = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-            GSenergy, GS_1DM = psi4cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, chemical_pot, printstuff )
+            GSenergy, GS_1DM = pyscf_cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, chemical_pot, printstuff )
         if ( method == 'MP2' ):
             import pyscf_mp2
             eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )

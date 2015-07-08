@@ -29,7 +29,7 @@ class localintegrals:
 
     def __init__( self, the_mf, active_orbs, localizationtype ):
 
-        assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ))
+        assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ) or ( localizationtype == 'lowdin' ))
         
         # Information on the full HF problem
         self.mol        = the_mf.mol
@@ -54,6 +54,13 @@ class localintegrals:
             loc = localizer.localizer( self.mol, the_mf.mo_coeff[ : , self.active==1 ], self._which )
             self.ao2loc = loc.optimize()
             self.TI_OK  = False
+        if ( self._which == 'lowdin' ):
+            assert( self.Norbs == self.mol.nao_nr() ) # Full active space required
+            ovlp = self.mol.intor('cint1e_ovlp_sph')
+            ovlp_eigs, ovlp_vecs = np.linalg.eigh( ovlp )
+            assert ( np.linalg.norm( np.dot( np.dot( ovlp_vecs, np.diag( ovlp_eigs ) ), ovlp_vecs.T ) - ovlp ) < 1e-10 )
+            self.ao2loc = np.dot( np.dot( ovlp_vecs, np.diag( np.power( ovlp_eigs, -0.5 ) ) ), ovlp_vecs.T )
+            self.TI_OK  = True
         assert( self.loc_ortho() < 1e-8 )
         
         # Effective Hamiltonian due to frozen part

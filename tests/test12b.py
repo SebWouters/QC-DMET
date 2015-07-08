@@ -23,7 +23,7 @@ import localintegrals, dmet
 from pyscf import gto, scf
 import numpy as np
 
-bl = 1.2
+bl = 1.0
 nat = 24
 mol = gto.Mole()
 mol.atom = []
@@ -56,7 +56,8 @@ for cluster in range( nat / atoms_per_imp ):
 isTranslationInvariant = True
 method = 'ED'
 SCmethod = 'HUBB' #'LSTSQ'
-theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
+doSCF = True
+theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
 theDMET.doselfconsistent()
 theDMET.dump_bath_orbs( 'Hnew-bathorbs.molden' )
 

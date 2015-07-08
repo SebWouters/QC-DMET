@@ -382,29 +382,40 @@ class dmet:
         assert( self.TransInv == True  )
         assert( self.doDET    == False )
         
-        old_1rdm     = self.helper.construct1RDM_loc( self.doSCF, self.umat )
-        oldumatflat  = self.square2flat( self.umat )
-        impurityOrbs = self.impClust[ 0 ]
-        numImpOrbs   = np.sum( impurityOrbs )
-        numBathOrbs, loc2dmet, core1RDM_dmet = self.helper.constructbath( old_1rdm, impurityOrbs )
+        old_1rdm = self.helper.construct1RDM_loc( self.doSCF, self.umat )
+        imp_number = 0
         
-        Norb_in_imp  = numImpOrbs + numBathOrbs
-        Nelec_in_imp = int(round(self.ints.Nelec - np.sum( core1RDM_dmet )))
+        # Get the DMET orbitals, and the number of electrons in the impurity problem
+        loc2dmet     = self.dmetOrbs[ imp_number ]
+        Norb_in_imp  = loc2dmet.shape[ 1 ]
+        Nelec_in_imp = int(round( np.trace( self.imp_1RDM[ imp_number ] )))
         assert ( Nelec_in_imp % 2 == 0 )
         numPairs     = Nelec_in_imp / 2
-        core1RDM_loc = np.dot( np.dot( loc2dmet, np.diag( core1RDM_dmet ) ), loc2dmet.T )
-        dmetFOCK     = self.ints.dmet_fock( loc2dmet, Norb_in_imp, core1RDM_loc )
-        dmetTEI      = self.ints.dmet_tei(  loc2dmet, Norb_in_imp )
-        DMguess      = np.dot(np.dot( loc2dmet[ :, :Norb_in_imp ].T, old_1rdm ), loc2dmet[ :, :Norb_in_imp ] )
+        numImpOrbs   = self.imp_size[ imp_number ]
+        
+        # Get the active space Hamiltonian with the same frozen environment as the high level calculation
+        fullFOCK = self.ints.dmet_fock( loc2dmet, Norb_in_imp, old_1rdm ) # With JK contribution from the active space
+        origUMAT = np.dot( np.dot( loc2dmet.T, self.umat ), loc2dmet )
+        if ( self.doSCF == True ):
+            projector   = np.eye( self.Norb ) - np.dot( loc2dmet, loc2dmet.T )
+            core1RDM    = np.dot( np.dot( projector, old_1rdm  ), projector )
+            partialFOCK = self.ints.dmet_fock( loc2dmet, Norb_in_imp, core1RDM ) # No JK contribution from the active space
+            TEI         = self.ints.dmet_tei(  loc2dmet, Norb_in_imp )
         
         def my_hubbard_rdmdiff( newumatflat ):
         
-            umat_square = self.flat2square( newumatflat )
-            dmetFOCKcopy = np.array( dmetFOCK, copy=True )
-            dmetFOCKcopy[ :numImpOrbs, :numImpOrbs ] += umat_square[ :numImpOrbs, :numImpOrbs ]
-            import rhf
-            new_1rdm = rhf.solve_ERI( dmetFOCKcopy, dmetTEI, DMguess, numPairs )
-            theerror = new_1rdm - self.imp_1RDM[ 0 ]
+            newUMAT = np.array( origUMAT, copy=True )
+            newUMAT[ :numImpOrbs, :numImpOrbs ] = self.flat2square( newumatflat )[ :numImpOrbs, :numImpOrbs ]
+            
+            # Quicktest: reproduce the old (!! wrong !!) scheme
+            newUMAT[ :, numImpOrbs: ] = 0.0
+            newUMAT[ numImpOrbs:, : ] = 0.0
+            
+            OneDM = self.helper.construct1RDM_base( fullFOCK + newUMAT, numPairs )
+            if ( self.doSCF == True ):
+                import rhf
+                OneDM = rhf.solve_ERI( partialFOCK + newUMAT, TEI, OneDM, numPairs )
+            theerror = OneDM - self.imp_1RDM[ 0 ]
             if ( self.fitImpBath == False ):
                 theerror = theerror[ :numImpOrbs, :numImpOrbs ]
             errors = np.reshape( theerror, theerror.shape[0] * theerror.shape[1], order='F' )

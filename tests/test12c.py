@@ -23,7 +23,7 @@ import localintegrals, dmet
 from pyscf import gto, scf
 import numpy as np
 
-bl = 5.0
+bl = 3.4
 nat = 10
 mol = gto.Mole()
 mol.atom = []
@@ -69,7 +69,7 @@ for cluster in range( nat / atoms_per_imp ):
     impurityClusters.append( impurities )
 isTranslationInvariant = True
 method = 'ED'
-SCmethod = 'LSTSQ' #'HUBB' #'LSTSQ'
+SCmethod = 'HUBB' #'LSTSQ'
 doSCF = False
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
 theDMET.doselfconsistent()

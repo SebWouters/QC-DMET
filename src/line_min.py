@@ -39,7 +39,14 @@ def optimize( func, grad, param, max_iter=20 ):
         # Use thereto the augmented linear equation (Eq. 272 of helpers.py from Gerald)
         g2 = np.zeros( [nr+nx,nx], dtype=float )
         r2 = np.zeros( [nr+nx], dtype=float )
-        g2[:nr,:] = grad( param )
+        if ( grad == None ):
+            stepsize = 1e-5
+            for counter in range(nx):
+                dx = np.zeros([nx], dtype=float)
+                dx[counter] = stepsize
+                g2[:nr,counter] = ( func( param + dx ) - func( param - dx ) ) / ( 2 * stepsize )
+        else:
+            g2[:nr,:] = grad( param )
         g2[nr:,:] = 0.1 * np.sqrt( costf ) * np.eye( nx )
         r2[:nr]   = resid
         dx, residuals, rank, sigma = np.linalg.lstsq( g2, r2 )

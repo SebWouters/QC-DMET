@@ -22,56 +22,42 @@ sys.path.append('../src')
 import localintegrals, dmet
 from pyscf import gto, scf
 import numpy as np
-import math as m
 
-b1 = 1.2
-nat = 10
+bl = 1.0
+nat = 24
 mol = gto.Mole()
-mol.verbose = 0
 mol.atom = []
-
-r = b1/2 / np.sin(np.pi/nat)
+r = 0.5 * bl / np.sin(np.pi/nat)
 for i in range(nat):
     theta = i * (2*np.pi/nat)
-    mol.atom.append(('Li', (r*np.cos(theta), r*np.sin(theta), 0)))
+    mol.atom.append(('H', (r*np.cos(theta), r*np.sin(theta), 0)))
 
-mol.basis = {'Li': gto.basis.parse('''
-Li    S
-    642.4189200              0.0021426        
-     96.7985150              0.0162089        
-     22.0911210              0.0773156        
-      6.2010703              0.2457860        
-      1.9351177              0.4701890        
-      0.6367358              0.3454708        
-Li    S
-      2.3249184             -0.0350917
-      0.6324306             -0.1912328
-      0.0790534              1.0839878
-Li    S
-      0.0359620              1.0000000
-''')}
-mol.build()
+mol.basis = 'sto-3g'
+mol.build(verbose=0)
 
-mf = scf.RHF( mol )
+mf = scf.RHF(mol)
 mf.verbose = 3
+mf.max_cycle = 1000
 mf.scf()
 
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
-myInts.molden( 'qiming_li.molden' )
+myInts.molden( 'Hnew-loc.molden' )
 
-#Imp size : 1 Li
-atoms_per_imp = 1
+atoms_per_imp = 2 # Impurity size = 1/2/3/4/6/8 Be atoms
+assert ( nat % atoms_per_imp == 0 )
+orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 
 impurityClusters = []
 for cluster in range( nat / atoms_per_imp ):
-    impurities = np.zeros( [ myInts.mol.nao_nr() ], dtype=int )
-    for orb in range(3*atoms_per_imp):
-        impurities[ 3*atoms_per_imp*cluster + orb ] = 1
+    impurities = np.zeros( [ myInts.Norbs ], dtype=int )
+    for orb in range( orbs_per_imp ):
+        impurities[ orbs_per_imp*cluster + orb ] = 1
     impurityClusters.append( impurities )
 isTranslationInvariant = True
 method = 'ED'
-SCmethod = 'LSTSQ'
+SCmethod = 'HUBB' #'LSTSQ'
 theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
 theDMET.doselfconsistent()
+theDMET.dump_bath_orbs( 'Hnew-bathorbs.molden' )
 
 

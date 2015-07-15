@@ -23,7 +23,7 @@ import localintegrals, dmet
 from pyscf import gto, scf, symm
 import numpy as np
 
-mol = gto.Mole() # Buckyball optimized with psi4 B3LYP/cc-pVDZ
+mol = gto.Mole() # Pentane
 mol.atom = '''
  C    -2.53113999    0.00000000    0.34113867
  H    -2.53149095   -0.89054959    0.96946592

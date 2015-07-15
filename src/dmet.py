@@ -76,7 +76,7 @@ class dmet:
         self.time_func= 0.0
         self.time_grad= 0.0
         
-        np.set_printoptions(precision=3, linewidth=200)
+        np.set_printoptions(precision=3, linewidth=160)
         
     def testclusters( self ):
     
@@ -210,7 +210,7 @@ class dmet:
                 import pyscf_cc
                 assert( Nelec_in_imp % 2 == 0 )
                 DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
+                IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, 'RDM', chempot_imp )
             if ( self.method == 'MP2' ):
                 import pyscf_mp2
                 assert( Nelec_in_imp % 2 == 0 )
@@ -377,52 +377,6 @@ class dmet:
         
         return gradient
         
-    def wrap_rdmdiff_hubbardstyle( self ):
-    
-        assert( self.TransInv == True  )
-        assert( self.doDET    == False )
-        
-        old_1rdm = self.helper.construct1RDM_loc( self.doSCF, self.umat )
-        imp_number = 0
-        
-        # Get the DMET orbitals, and the number of electrons in the impurity problem
-        loc2dmet     = self.dmetOrbs[ imp_number ]
-        Norb_in_imp  = loc2dmet.shape[ 1 ]
-        Nelec_in_imp = int(round( np.trace( self.imp_1RDM[ imp_number ] )))
-        assert ( Nelec_in_imp % 2 == 0 )
-        numPairs     = Nelec_in_imp / 2
-        numImpOrbs   = self.imp_size[ imp_number ]
-        
-        # Get the active space Hamiltonian with the same frozen environment as the high level calculation
-        fullFOCK = self.ints.dmet_fock( loc2dmet, Norb_in_imp, old_1rdm ) # With JK contribution from the active space
-        origUMAT = np.dot( np.dot( loc2dmet.T, self.umat ), loc2dmet )
-        if ( self.doSCF == True ):
-            projector   = np.eye( self.Norb ) - np.dot( loc2dmet, loc2dmet.T )
-            core1RDM    = np.dot( np.dot( projector, old_1rdm  ), projector )
-            partialFOCK = self.ints.dmet_fock( loc2dmet, Norb_in_imp, core1RDM ) # No JK contribution from the active space
-            TEI         = self.ints.dmet_tei(  loc2dmet, Norb_in_imp )
-        
-        def my_hubbard_rdmdiff( newumatflat ):
-        
-            newUMAT = np.array( origUMAT, copy=True )
-            newUMAT[ :numImpOrbs, :numImpOrbs ] = self.flat2square( newumatflat )[ :numImpOrbs, :numImpOrbs ]
-            
-            # Quicktest: reproduce the old (!! wrong !!) scheme
-            newUMAT[ :, numImpOrbs: ] = 0.0
-            newUMAT[ numImpOrbs:, : ] = 0.0
-            
-            OneDM = self.helper.construct1RDM_base( fullFOCK + newUMAT, numPairs )
-            if ( self.doSCF == True ):
-                import rhf
-                OneDM = rhf.solve_ERI( partialFOCK + newUMAT, TEI, OneDM, numPairs )
-            theerror = OneDM - self.imp_1RDM[ 0 ]
-            if ( self.fitImpBath == False ):
-                theerror = theerror[ :numImpOrbs, :numImpOrbs ]
-            errors = np.reshape( theerror, theerror.shape[0] * theerror.shape[1], order='F' )
-            return errors
-            
-        return my_hubbard_rdmdiff
-        
     def verify_gradient( self, umatflat ):
     
         gradient = self.costfunction_derivative( umatflat )
@@ -453,8 +407,8 @@ class dmet:
         eigvals = eigvals[ idx ]
         eigvecs = eigvecs[ :, idx ]
         print "Hessian eigenvalues =", eigvals
-        print "Hessian 1st eigenvector =",eigvecs[:,0]
-        print "Hessian 2nd eigenvector =",eigvecs[:,1]
+        #print "Hessian 1st eigenvector =",eigvecs[:,0]
+        #print "Hessian 2nd eigenvector =",eigvecs[:,1]
         
     def flat2square( self, umatflat ):
     
@@ -514,6 +468,7 @@ class dmet:
             self.time_ed += ( stop_ed - start_ed )
             print "   Energy =", self.energy
             # self.verify_gradient( self.square2flat( self.umat ) ) # Only works for self.doSCF == False!!
+            self.hessian_eigenvalues( self.square2flat( self.umat ) )
             
             # Solve for the u-matrix
             start_cf = time.time()
@@ -526,11 +481,6 @@ class dmet:
             if ( self.SCmethod == 'LINE' ):
                 result = line_min.optimize( self.rdm_differences, self.rdm_differences_derivative, self.square2flat( self.umat ) )
                 self.umat = self.flat2square( result )
-            if ( self.SCmethod == 'HUBB' ):
-                #result = line_min.optimize( self.wrap_rdmdiff_hubbardstyle(), None, self.square2flat( self.umat ) )
-                #self.umat = self.flat2square( result )
-                result = optimize.leastsq( self.wrap_rdmdiff_hubbardstyle(), self.square2flat( self.umat ), factor=0.1 )
-                self.umat = self.flat2square( result[ 0 ] )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
             print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
             stop_cf = time.time()

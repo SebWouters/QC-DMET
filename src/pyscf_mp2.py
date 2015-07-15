@@ -62,9 +62,10 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, 
     # Get the MP2 solution
     myMP2 = mp.MP2( mf )
     E_MP2, T_MP2 = myMP2.kernel()
-    OneRDM_mo = myMP2.make_rdm1()
+    OneRDM_mo = np.zeros( [Norb, Norb], dtype=float )
+    #OneRDM_mo = myMP2.make_rdm1() --------------> Carlos his remark
     TwoRDM_mo = myMP2.make_rdm2() # 2-RDM is stored in chemistry notation!
-    OneRDM_mo = 0.5 * ( OneRDM_mo + OneRDM_mo.T ) # Symmetrize
+    #OneRDM_mo = 0.5 * ( OneRDM_mo + OneRDM_mo.T ) # Symmetrize
     
     # Check that we understand what is going on
     Etotal = Erhf + E_MP2

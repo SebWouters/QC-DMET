@@ -51,7 +51,13 @@ class localintegrals:
             self.ao2loc = lo.orth.orth_ao( self.mol, self._which )
             self.TI_OK  = True
         if ( self._which == 'boys' ):
-            loc = localizer.localizer( self.mol, the_mf.mo_coeff[ : , self.active==1 ], self._which )
+            orbitals_to_localize = the_mf.mo_coeff[ : , self.active==1 ]
+            if ( self.Norbs == self.mol.nao_nr() ): # If you want the full active, first do meta-Lowdin
+                orbitals_to_localize = lo.orth.orth_ao( self.mol, 'meta_lowdin' )
+            old_verbose = self.mol.verbose
+            self.mol.verbose = 5
+            loc = localizer.localizer( self.mol, orbitals_to_localize, self._which )
+            self.mol.verbose = old_verbose
             self.ao2loc = loc.optimize()
             self.TI_OK  = False
         if ( self._which == 'lowdin' ):

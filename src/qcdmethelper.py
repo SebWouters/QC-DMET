@@ -107,6 +107,7 @@ class qcdmethelper:
         eigenvals = eigenvals[idx]
         eigenvecs = eigenvecs[:,idx]
         OneDM = 2 * np.dot( eigenvecs[:,:myNumPairs] , eigenvecs[:,:myNumPairs].T )
+        #print "SP gap =", eigenvals[myNumPairs] - eigenvals[myNumPairs-1]
         return OneDM
         
     def constructbath( self, OneDM, impurityOrbs, threshold=1e-13 ):

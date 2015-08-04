@@ -32,13 +32,15 @@ class dmet:
             assert( theInts.TI_OK == True )
         
         assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
-        assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'LINE' ) or ( SCmethod == 'BFGS' ) or ( SCmethod == 'HUBB' ) or ( SCmethod == 'NONE' ))
+        assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'LINE' ) or ( SCmethod == 'BFGS' ) or ( SCmethod == 'NONE' ))
         
-        self.ints     = theInts
-        self.Norb     = self.ints.Norbs
-        self.impClust = impurityClusters
-        self.umat     = np.zeros([ self.Norb, self.Norb ], dtype=float)
+        self.ints       = theInts
+        self.Norb       = self.ints.Norbs
+        self.impClust   = impurityClusters
+        self.umat       = np.zeros([ self.Norb, self.Norb ], dtype=float)
+        self.relaxation = 0.0
         
+        self.NI_hack    = False
         self.method     = method
         self.doSCF      = doSCF
         self.TransInv   = isTranslationInvariant
@@ -201,6 +203,17 @@ class dmet:
             dmetOEI  = self.ints.dmet_oei(  loc2dmet, Norb_in_imp )
             dmetFOCK = self.ints.dmet_fock( loc2dmet, Norb_in_imp, core1RDM_loc )
             dmetTEI  = self.ints.dmet_tei(  loc2dmet, Norb_in_imp )
+            
+            if ( self.NI_hack == True ):
+                dmetTEI[:,:,:,numImpOrbs:]=0.0
+                dmetTEI[:,:,numImpOrbs:,:]=0.0
+                dmetTEI[:,numImpOrbs:,:,:]=0.0
+                dmetTEI[numImpOrbs:,:,:,:]=0.0
+            
+                umat_rotated = np.dot(np.dot(loc2dmet.T, self.umat), loc2dmet)
+                umat_rotated[:numImpOrbs,:numImpOrbs]=0.0
+                dmetOEI += umat_rotated[:Norb_in_imp,:Norb_in_imp]
+                dmetFOCK = np.array( dmetOEI, copy=True )
             
             print "DMET::exact : Performing a (", Norb_in_imp, "orb,", Nelec_in_imp, "el ) DMET active space calculation."
             if ( self.method == 'ED' ):
@@ -468,7 +481,8 @@ class dmet:
             self.time_ed += ( stop_ed - start_ed )
             print "   Energy =", self.energy
             # self.verify_gradient( self.square2flat( self.umat ) ) # Only works for self.doSCF == False!!
-            self.hessian_eigenvalues( self.square2flat( self.umat ) )
+            if ( self.SCmethod != 'NONE' ):
+                self.hessian_eigenvalues( self.square2flat( self.umat ) )
             
             # Solve for the u-matrix
             start_cf = time.time()
@@ -495,6 +509,7 @@ class dmet:
             # Get the error measure
             u_diff   = np.linalg.norm( umat_old - self.umat )
             rdm_diff = np.linalg.norm( rdm_old - self.transform_ed_1rdm() )
+            self.umat = self.relaxation * umat_old + ( 1.0 - self.relaxation ) * self.umat
             print "   2-norm of difference old and new u-mat =", u_diff
             print "   2-norm of difference old and new 1-RDM =", rdm_diff
             print "******************************************************"
@@ -540,4 +555,7 @@ class dmet:
         with open( filename, 'w' ) as thefile:
             molden.header( self.ints.mol, thefile )
             molden.orbital_coeff( self.ints.mol, thefile, np.dot( self.ints.ao2loc, self.dmetOrbs[impnumber] ) )
-        
+    
+    def onedm_solution_rhf(self):
+        return self.helper.construct1RDM_loc( self.doSCF, self.umat )
+    

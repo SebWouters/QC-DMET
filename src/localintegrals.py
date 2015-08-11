@@ -21,13 +21,14 @@ import sys
 sys.path.append('/home/seba') #Folder in which PySCF is installed
 from pyscf import gto, scf, ao2mo, tools, future
 from pyscf.future import lo
+from pyscf.future.lo import nao, orth
 from pyscf.tools import molden, localizer
 import rhf
 import numpy as np
 
 class localintegrals:
 
-    def __init__( self, the_mf, active_orbs, localizationtype ):
+    def __init__( self, the_mf, active_orbs, localizationtype, meta_lowdin_rotation=None ):
 
         assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ) or ( localizationtype == 'lowdin' ))
         
@@ -46,27 +47,30 @@ class localintegrals:
         self.Nelec    = int(np.rint( self.mol.nelectron - np.sum( the_mf.mo_occ[ self.active==0 ] ))) # Total number of electrons minus frozen part
         
         # Localize the orbitals
-        if ( self._which == 'meta_lowdin' ):
-            assert( self.Norbs == self.mol.nao_nr() ) # Full active space required
-            self.ao2loc = lo.orth.orth_ao( self.mol, self._which )
-            self.TI_OK  = True
-        if ( self._which == 'boys' ):
-            orbitals_to_localize = the_mf.mo_coeff[ : , self.active==1 ]
-            if ( self.Norbs == self.mol.nao_nr() ): # If you want the full active, first do meta-Lowdin
-                orbitals_to_localize = lo.orth.orth_ao( self.mol, 'meta_lowdin' )
-            old_verbose = self.mol.verbose
-            self.mol.verbose = 5
-            loc = localizer.localizer( self.mol, orbitals_to_localize, self._which )
-            self.mol.verbose = old_verbose
-            self.ao2loc = loc.optimize()
-            self.TI_OK  = False
+        if (( self._which == 'meta_lowdin' ) or ( self._which == 'boys' )):
+            if ( self._which == 'meta_lowdin' ):
+                assert( self.Norbs == self.mol.nao_nr() ) # Full active space required
+            if ( self._which == 'boys' ):
+                self.ao2loc = the_mf.mo_coeff[ : , self.active==1 ]
+            if ( self.Norbs == self.mol.nao_nr() ): # If you want the full active, do meta-Lowdin
+                nao.AOSHELL[4] = ['1s0p0d0f', '2s1p0d0f'] # redefine the valence shell for Be
+                self.ao2loc = orth.orth_ao( self.mol, 'meta_lowdin' )
+                if ( meta_lowdin_rotation != None ):
+                    self.ao2loc = np.dot( self.ao2loc, meta_lowdin_rotation.T )
+            if ( self._which == 'boys' ):
+                old_verbose = self.mol.verbose
+                self.mol.verbose = 5
+                loc = localizer.localizer( self.mol, self.ao2loc, self._which )
+                self.mol.verbose = old_verbose
+                self.ao2loc = loc.optimize()
+            self.TI_OK  = False # Check yourself if OK, then overwrite
         if ( self._which == 'lowdin' ):
             assert( self.Norbs == self.mol.nao_nr() ) # Full active space required
             ovlp = self.mol.intor('cint1e_ovlp_sph')
             ovlp_eigs, ovlp_vecs = np.linalg.eigh( ovlp )
             assert ( np.linalg.norm( np.dot( np.dot( ovlp_vecs, np.diag( ovlp_eigs ) ), ovlp_vecs.T ) - ovlp ) < 1e-10 )
             self.ao2loc = np.dot( np.dot( ovlp_vecs, np.diag( np.power( ovlp_eigs, -0.5 ) ) ), ovlp_vecs.T )
-            self.TI_OK  = True
+            self.TI_OK  = False # Check yourself if OK, then overwrite
         assert( self.loc_ortho() < 1e-8 )
         
         # Effective Hamiltonian due to frozen part

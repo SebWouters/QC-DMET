@@ -38,7 +38,7 @@ class dmet:
         self.Norb       = self.ints.Norbs
         self.impClust   = impurityClusters
         self.umat       = np.zeros([ self.Norb, self.Norb ], dtype=float)
-        self.relaxation = 0.0
+        self.relaxation = 0.5
         
         self.NI_hack    = False
         self.method     = method

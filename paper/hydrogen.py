@@ -59,6 +59,7 @@ for bondlength in bondlengths:
     else:
         myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
         myInts.molden( 'hydrogen-loc.molden' )
+        myInts.TI_OK = True # Only s functions
 
         atoms_per_imp = 2 # Impurity size = 1 atom
         assert ( nat % atoms_per_imp == 0 )
@@ -70,7 +71,7 @@ for bondlength in bondlengths:
             for orb in range( orbs_per_imp ):
                 impurities[ orbs_per_imp*cluster + orb ] = 1
             impurityClusters.append( impurities )
-        isTranslationInvariant = True
+        isTranslationInvariant = True # OK because only s-functions and meta-lowdin
         method = 'ED'
         SCmethod = 'LSTSQ' #Don't do it self-consistently
         doSCF = False

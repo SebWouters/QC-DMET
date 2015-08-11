@@ -81,7 +81,7 @@ for alpha in np.arange(0.88, 1.13, 0.02):
         for orb in range( orbs_per_imp ):
             impurities[ orbs_per_imp*cluster + orb ] = 1
         impurityClusters.append( impurities )
-    isTranslationInvariant = True
+    isTranslationInvariant = False # Both in meta_lowdin (due to px, py) and Boys TI is not OK
     method = 'CC'
     SCmethod = 'NONE' #Don't do it self-consistently
     theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )

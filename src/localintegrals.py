@@ -141,7 +141,7 @@ class localintegrals:
             assert( self.Nelec % 2 == 0 )
             numPairs = self.Nelec / 2
             DMguessRHF = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-            GSenergy, GS_1DM = pyscf_cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, 'RDM', chemical_pot, printstuff )
+            GSenergy, GS_1DM = pyscf_cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, 'LAMBDA', chemical_pot, printstuff )
         if ( method == 'MP2' ):
             import pyscf_mp2
             eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )

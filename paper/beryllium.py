@@ -26,7 +26,7 @@ from pyscf.future.cc import ccsd
 import numpy as np
 
 ###  Disclaimer: run one of the three cases for root following
-casenumber = 3 # 1, 2 or 3
+casenumber = 1 # 1, 2 or 3
 
 if ( casenumber == 1 ):
     thecases = np.arange( 3.6, 2.88, -0.1 )
@@ -83,7 +83,7 @@ for bl in thecases:
             myInts.TI_OK = True
         myInts.molden( 'Be-loc.molden' )
 
-        atoms_per_imp = 2 # Impurity size = 1/2/4 Be atoms
+        atoms_per_imp = 4 # Impurity size = 1/2/4 Be atoms
         assert ( nat % atoms_per_imp == 0 )
         orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 
@@ -98,7 +98,7 @@ for bl in thecases:
         else:
             isTranslationInvariant = False # Boys TI is not OK
         method = 'CC'
-        SCmethod = 'LSTSQ' # NONE or LSTSQ for no self-consistency or least-squares fitting of the u-matrix, respectively
+        SCmethod = 'NONE' # NONE or LSTSQ for no self-consistency or least-squares fitting of the u-matrix, respectively
         doSCF = False
         theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
         theDMET.doselfconsistent()

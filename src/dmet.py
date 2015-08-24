@@ -38,7 +38,7 @@ class dmet:
         self.Norb       = self.ints.Norbs
         self.impClust   = impurityClusters
         self.umat       = np.zeros([ self.Norb, self.Norb ], dtype=float)
-        self.relaxation = 0.5
+        self.relaxation = 0.0
         
         self.NI_hack    = False
         self.method     = method
@@ -223,7 +223,7 @@ class dmet:
                 import pyscf_cc
                 assert( Nelec_in_imp % 2 == 0 )
                 DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, 'RDM', chempot_imp )
+                IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, 'LAMBDA', chempot_imp )
             if ( self.method == 'MP2' ):
                 import pyscf_mp2
                 assert( Nelec_in_imp % 2 == 0 )

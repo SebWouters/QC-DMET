@@ -26,24 +26,9 @@ from pyscf.future import cc
 from pyscf.future.cc import ccsd
 from pyscf.tools import rhf_newtonraphson
 
-class my_dummy_eris:
+def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBDA', chempot_imp=0.0, printoutput=True ):
 
-    def __init__( self, FOCKloc, TEIloc, loc2mo, nocc ):
-    
-        self.ovov = np.einsum( 'ia,ijkl->ajkl', loc2mo[:,:nocc], TEIloc    )
-        self.ovov = np.einsum( 'kc,ajkl->ajcl', loc2mo[:,:nocc], self.ovov )
-        
-        self.oooo = np.einsum( 'jb,ajcl->abcl', loc2mo[:,:nocc], self.ovov )
-        self.oooo = np.einsum( 'ld,abcl->abcd', loc2mo[:,:nocc], self.oooo )
-
-        self.ovov = np.einsum( 'jb,ajcl->abcl', loc2mo[:,nocc:], self.ovov )
-        self.ovov = np.einsum( 'ld,abcl->abcd', loc2mo[:,nocc:], self.ovov )
-        
-        self.fock = np.dot( np.dot( loc2mo.T, FOCKloc ), loc2mo )
-
-def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='RDM', chempot_imp=0.0, printoutput=True ):
-
-    assert (( energytype == 'RDM' ) or ( energytype == 'AMP' ))
+    assert (( energytype == 'LAMBDA' ) or ( energytype == 'LAMBDA_AMP' ) or ( energytype == 'LAMBDA_ZERO' ))
 
     # Killing output if necessary
     if ( printoutput==False ):
@@ -93,19 +78,22 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='RDM',
     ccsolver = ccsd.CCSD( mf )
     ccsolver.verbose = 5
     ECORR, t1, t2 = ccsolver.ccsd()
-    ccsolver.solve_lambda()
-    pyscfRDM1 = ccsolver.make_rdm1() #MO space
-    pyscfRDM1 = 0.5 * ( pyscfRDM1 + pyscfRDM1.T )
-    pyscfRDM2 = ccsolver.make_rdm2() #MO space
+    if ( energytype == 'LAMBDA' ):
+        ccsolver.solve_lambda()
+        pyscfRDM1 = ccsolver.make_rdm1() # MO space
+        pyscfRDM2 = ccsolver.make_rdm2() # MO space
+    if ( energytype == 'LAMBDA_AMP' ):
+        # Overwrite lambda tensors with t-amplitudes
+        pyscfRDM1 = ccsolver.make_rdm1(t1, t2, t1, t2) # MO space
+        pyscfRDM2 = ccsolver.make_rdm2(t1, t2, t1, t2) # MO space
+    if ( energytype == 'LAMBDA_ZERO' ):
+        # Overwrite lambda tensors with 0.0
+        fake_l1 = np.zeros( t1.shape, dtype=float )
+        fake_l2 = np.zeros( t2.shape, dtype=float )
+        pyscfRDM1 = ccsolver.make_rdm1(t1, t2, fake_l1, fake_l2) # MO space
+        pyscfRDM2 = ccsolver.make_rdm2(t1, t2, fake_l1, fake_l2) # MO space
+    pyscfRDM1 = 0.5 * ( pyscfRDM1 + pyscfRDM1.T ) # Symmetrize
     ERHF2 = mf.hf_energy
-    
-    # To check that we know what is going on:
-    '''
-    dummy_eris = my_dummy_eris( FOCKloc, TEI, mf.mo_coeff, numPairs )
-    ECORR2 = ccsd.energy( ccsolver, t1, t2, dummy_eris )
-    print "ECORR1 =", ECORR
-    print "ECORR2 =", ECORR2
-    '''
     
     # Print a few to things to double check
     print "ERHF1 =", ERHF1
@@ -139,30 +127,11 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='RDM',
     TEIpart *= 0.25
     
     # To calculate the impurity energy, rescale the JK matrix with a factor 0.5 to avoid double counting: 0.5 * ( OEI + FOCK ) = OEI + 0.5 * JK
-    FOCKpart = np.zeros( [Norb, Norb], dtype=float )
-    FOCKpart[:Nimp,:] += OEI[:Nimp,:] + FOCK[:Nimp,:]
-    FOCKpart[:,:Nimp] += OEI[:,:Nimp] + FOCK[:,:Nimp]
-    FOCKpart *= 0.25
-    
-    if ( energytype == 'AMP' ):
-        
-        dummy_eris = my_dummy_eris( FOCKpart, TEIpart, mf.mo_coeff, numPairs )
-        ECORR_IMP = ccsd.energy( ccsolver, t1, t2, dummy_eris )
-        EMF_IMP = CONST + np.einsum( 'i,i->', np.diag( dummy_eris.fock ), mf.mo_occ )
-        for orb1 in range( numPairs ):
-            for orb2 in range( numPairs ):
-                EMF_IMP += 2 * dummy_eris.oooo[orb1,orb1,orb2,orb2] - dummy_eris.oooo[orb1,orb2,orb1,orb2]
-        ImpurityEnergy = EMF_IMP + ECORR_IMP
-        #print "AMP MF   energy =", EMF_IMP
-        #print "AMP CORR energy =", ECORR_IMP
-    
-    #energytype = 'RDM'
-    if ( energytype == 'RDM' ):
-    
-        ImpurityEnergy = CONST + 0.5 * np.einsum( 'ij,ij->',     OneRDM_loc[:Nimp,:], OEI[:Nimp,:] + FOCK[:Nimp,:] ) + \
-                                 0.5 * np.einsum( 'ijkl,ijkl->', TwoRDM_loc[:,:,:,:], TEIpart[:,:,:,:] )
-        
-        #print "RDM CORR energy =", ImpurityEnergy - EMF_IMP
+    FOCKscale = np.zeros( [Norb, Norb], dtype=float )
+    FOCKscale[:Nimp,:] += OEI[:Nimp,:] + FOCK[:Nimp,:]
+    FOCKscale[:,:Nimp] += OEI[:,:Nimp] + FOCK[:,:Nimp]
+    FOCKscale *= 0.25
+    ImpurityEnergy = CONST + np.einsum('ij,ij->', OneRDM_loc, FOCKscale) + 0.5 * np.einsum('ijkl,ijkl->', TwoRDM_loc, TEIpart)
     
     return ( ImpurityEnergy, OneRDM_loc )
 

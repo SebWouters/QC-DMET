@@ -28,7 +28,7 @@ import numpy as np
 
 class localintegrals:
 
-    def __init__( self, the_mf, active_orbs, localizationtype, meta_lowdin_rotation=None ):
+    def __init__( self, the_mf, active_orbs, localizationtype, meta_lowdin_rotation=None, use_full_hessian=True ):
 
         assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ) or ( localizationtype == 'lowdin' ))
         
@@ -60,7 +60,7 @@ class localintegrals:
             if ( self._which == 'boys' ):
                 old_verbose = self.mol.verbose
                 self.mol.verbose = 5
-                loc = localizer.localizer( self.mol, self.ao2loc, self._which )
+                loc = localizer.localizer( self.mol, self.ao2loc, self._which, use_full_hessian )
                 self.mol.verbose = old_verbose
                 self.ao2loc = loc.optimize()
             self.TI_OK  = False # Check yourself if OK, then overwrite

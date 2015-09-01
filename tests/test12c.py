@@ -71,8 +71,7 @@ for bl in np.arange(1.2, 5.1, 0.2):
    isTranslationInvariant = True
    method = 'ED'
    SCmethod = 'NONE' #'LSTSQ'
-   doSCF = False
-   theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
+   theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
    theDMET.doselfconsistent()
    theDMET.dump_bath_orbs( 'Li-bathorbs.molden' )
 

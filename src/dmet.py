@@ -26,7 +26,7 @@ import time
 
 class dmet:
 
-    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED', SCmethod='LSTSQ', doSCF=False ):
+    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED', SCmethod='LSTSQ' ):
     
         if ( isTranslationInvariant == True ):
             assert( theInts.TI_OK == True )
@@ -42,7 +42,7 @@ class dmet:
         
         self.NI_hack    = False
         self.method     = method
-        self.doSCF      = doSCF
+        self.doSCF      = False
         self.TransInv   = isTranslationInvariant
         self.SCmethod   = SCmethod
         self.fitImpBath = True

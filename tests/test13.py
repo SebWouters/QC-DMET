@@ -66,8 +66,7 @@ for item in imp_sizes:
 isTranslationInvariant = False
 method = 'MP2'
 SCmethod = 'NONE'
-doSCF = False
-theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
+theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
 theDMET.doselfconsistent()
 for imp_number in range(5):
     theDMET.dump_bath_orbs( 'Pentane-bathorbs-imp'+str(imp_number)+'.molden', imp_number )

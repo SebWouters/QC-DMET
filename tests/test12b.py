@@ -56,8 +56,7 @@ for cluster in range( nat / atoms_per_imp ):
 isTranslationInvariant = True
 method = 'ED'
 SCmethod = 'LSTSQ'
-doSCF = False
-theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
+theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
 theDMET.doselfconsistent()
 theDMET.dump_bath_orbs( 'Hnew-bathorbs.molden' )
 

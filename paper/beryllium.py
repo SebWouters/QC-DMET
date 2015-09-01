@@ -62,7 +62,7 @@ for bl in thecases:
         ccsolver = ccsd.CCSD( mf )
         ccsolver.verbose = 5
         ECORR, t1, t2 = ccsolver.ccsd()
-        ECCSD = mf.hf_energy + ECORR   
+        ECCSD = mf.hf_energy + ECORR
         print "ECCSD for bondlength ",bl," =", ECCSD
 
     #elif ( bl < 3.35 ):
@@ -99,8 +99,7 @@ for bl in thecases:
             isTranslationInvariant = False # Boys TI is not OK
         method = 'CC'
         SCmethod = 'NONE' # NONE or LSTSQ for no self-consistency or least-squares fitting of the u-matrix, respectively
-        doSCF = False
-        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
+        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
         theDMET.doselfconsistent()
         #theDMET.dump_bath_orbs( 'Be-bathorbs.molden' )
 

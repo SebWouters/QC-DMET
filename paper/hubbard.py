@@ -57,8 +57,7 @@ for Nelectrons in range( 12, 241, 12 ):
    isTranslationInvariant = True
    method = 'ED'
    SCmethod = 'LSTSQ' # 'LSTSQ'
-   doSCF = False
-   theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
+   theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
    #oldUMAT = 0.33 * ( 2 * np.random.rand( Norbs, Norbs ) - 1 )
    #if ( oldUMAT != None ):
    #    theDMET.umat = theDMET.flat2square( theDMET.square2flat( oldUMAT ) )

@@ -74,8 +74,7 @@ for bondlength in bondlengths:
         isTranslationInvariant = True # OK because only s-functions and meta-lowdin
         method = 'ED'
         SCmethod = 'LSTSQ' #Don't do it self-consistently
-        doSCF = False
-        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod, doSCF )
+        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
         #if ( old_umat != None ):
         #    theDMET.umat = np.array( old_umat, copy=True )
         Energy = theDMET.doselfconsistent()

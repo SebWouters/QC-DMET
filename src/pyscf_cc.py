@@ -103,12 +103,13 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBD
     print "Do we understand how the 2-RDM is stored?", np.linalg.norm( np.einsum('ijkk->ij', pyscfRDM2) / (Nel - 1.0) - pyscfRDM1 )
     '''
     ECCSD1 = ERHF2 + ECORR
-    OneRDM_loc = np.dot(mf.mo_coeff, np.dot(pyscfRDM1, mf.mo_coeff.T ))
-    TwoRDM_loc = np.einsum('ai,ijkl->ajkl', mf.mo_coeff, pyscfRDM2 )
-    TwoRDM_loc = np.einsum('bj,ajkl->abkl', mf.mo_coeff, TwoRDM_loc)
-    TwoRDM_loc = np.einsum('ck,abkl->abcl', mf.mo_coeff, TwoRDM_loc)
-    TwoRDM_loc = np.einsum('dl,abcl->abcd', mf.mo_coeff, TwoRDM_loc)
-    ECCSD2 = CONST + np.einsum('ij,ij->', FOCKcopy, OneRDM_loc) + 0.5 * np.einsum('ijkl,ijkl->', TEI, TwoRDM_loc)
+    # Change the pyscfRDM1/2 from MO space to localized space
+    pyscfRDM1 = np.dot(mf.mo_coeff, np.dot(pyscfRDM1, mf.mo_coeff.T ))
+    pyscfRDM2 = np.einsum('ai,ijkl->ajkl', mf.mo_coeff, pyscfRDM2)
+    pyscfRDM2 = np.einsum('bj,ajkl->abkl', mf.mo_coeff, pyscfRDM2)
+    pyscfRDM2 = np.einsum('ck,abkl->abcl', mf.mo_coeff, pyscfRDM2)
+    pyscfRDM2 = np.einsum('dl,abcl->abcd', mf.mo_coeff, pyscfRDM2)
+    ECCSD2 = CONST + np.einsum('ij,ij->', FOCKcopy, pyscfRDM1) + 0.5 * np.einsum('ijkl,ijkl->', TEI, pyscfRDM2)
     print "ECCSD1 =", ECCSD1
     print "ECCSD2 =", ECCSD2
     
@@ -117,21 +118,15 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBD
         sys.stdout.flush()
         os.dup2(new_stdout, old_stdout)
         os.close(new_stdout)
-        
-    # Build the Hamiltonian matrix elements by only summing over one of the impurity sites, but making them symmetric
-    TEIpart = np.zeros( [Norb, Norb, Norb, Norb], dtype=float )
-    TEIpart[:Nimp,:,:,:] += TEI[:Nimp,:,:,:]
-    TEIpart[:,:Nimp,:,:] += TEI[:,:Nimp,:,:]
-    TEIpart[:,:,:Nimp,:] += TEI[:,:,:Nimp,:]
-    TEIpart[:,:,:,:Nimp] += TEI[:,:,:,:Nimp]
-    TEIpart *= 0.25
     
     # To calculate the impurity energy, rescale the JK matrix with a factor 0.5 to avoid double counting: 0.5 * ( OEI + FOCK ) = OEI + 0.5 * JK
-    FOCKscale = np.zeros( [Norb, Norb], dtype=float )
-    FOCKscale[:Nimp,:] += OEI[:Nimp,:] + FOCK[:Nimp,:]
-    FOCKscale[:,:Nimp] += OEI[:,:Nimp] + FOCK[:,:Nimp]
-    FOCKscale *= 0.25
-    ImpurityEnergy = CONST + np.einsum('ij,ij->', OneRDM_loc, FOCKscale) + 0.5 * np.einsum('ijkl,ijkl->', TwoRDM_loc, TEIpart)
+    ImpurityEnergy = CONST \
+                   + 0.25  * np.einsum('ij,ij->',     pyscfRDM1[:Nimp,:],     FOCK[:Nimp,:] + OEI[:Nimp,:]) \
+                   + 0.25  * np.einsum('ij,ij->',     pyscfRDM1[:,:Nimp],     FOCK[:,:Nimp] + OEI[:,:Nimp]) \
+                   + 0.125 * np.einsum('ijkl,ijkl->', pyscfRDM2[:Nimp,:,:,:], TEI[:Nimp,:,:,:]) \
+                   + 0.125 * np.einsum('ijkl,ijkl->', pyscfRDM2[:,:Nimp,:,:], TEI[:,:Nimp,:,:]) \
+                   + 0.125 * np.einsum('ijkl,ijkl->', pyscfRDM2[:,:,:Nimp,:], TEI[:,:,:Nimp,:]) \
+                   + 0.125 * np.einsum('ijkl,ijkl->', pyscfRDM2[:,:,:,:Nimp], TEI[:,:,:,:Nimp])
     
-    return ( ImpurityEnergy, OneRDM_loc )
+    return ( ImpurityEnergy, pyscfRDM1 )
 

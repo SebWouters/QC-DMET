@@ -45,10 +45,14 @@ class dmet:
         self.doSCF      = False
         self.TransInv   = isTranslationInvariant
         self.SCmethod   = SCmethod
+        self.CC_E_TYPE  = 'LAMBDA'
         self.fitImpBath = True
         self.doDET      = False
         self.doDET_NO   = False
         self.NOrotation = None
+        
+        if (( self.method == 'CC' ) and ( self.CC_E_TYPE == 'CASCI' )):
+            assert( len( self.impClust ) == 1 )
         
         if ( self.doDET == True ):
             # Cfr Bulik, PRB 89, 035140 (2014)
@@ -223,7 +227,7 @@ class dmet:
                 import pyscf_cc
                 assert( Nelec_in_imp % 2 == 0 )
                 DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, 'LAMBDA', chempot_imp )
+                IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, self.CC_E_TYPE, chempot_imp )
             if ( self.method == 'MP2' ):
                 import pyscf_mp2
                 assert( Nelec_in_imp % 2 == 0 )
@@ -251,12 +255,28 @@ class dmet:
             
         # When an incomplete impurity tiling is used for the Hamiltonian, self.energy should be augmented with the remaining HF part
         if ( np.sum( remainingOrbs ) != 0 ):
-            transfo = np.eye( self.Norb, dtype=float )
-            totalOEI  = self.ints.dmet_oei(  transfo, self.Norb )
-            totalFOCK = self.ints.dmet_fock( transfo, self.Norb, OneRDM )
-            self.energy += 0.5 * np.einsum( 'ij,ij->', OneRDM[remainingOrbs==1,:], \
-                     totalOEI[remainingOrbs==1,:] + totalFOCK[remainingOrbs==1,:] )
-            Nelectrons += np.trace( (OneRDM[remainingOrbs==1,:])[:,remainingOrbs==1] )
+        
+            if ( self.CC_E_TYPE == 'CASCI' ):
+                '''
+                If CASCI is passed as CC energy type, the energy of the one and only full impurity Hamiltonian is returned.
+                The one-electron integrals of this impurity Hamiltonian is the full Fock operator of the CORE orbitals!
+                The constant part of the energy still needs to be added: sum_occ ( 2 * OEI[occ,occ] + JK[occ,occ] )
+                                                                         = einsum( core1RDM_loc, OEI ) + 0.5 * einsum( core1RDM_loc, JK )
+                                                                         = 0.5 * einsum( core1RDM_loc, OEI + FOCK )
+                '''
+                assert( maxiter == 1 )
+                transfo = np.eye( self.Norb, dtype=float )
+                totalOEI  = self.ints.dmet_oei(  transfo, self.Norb )
+                totalFOCK = self.ints.dmet_fock( transfo, self.Norb, core1RDM_loc )
+                self.energy += 0.5 * np.einsum( 'ij,ij->', core1RDM_loc, totalOEI + totalFOCK )
+                Nelectrons = np.trace( self.imp_1RDM[ 0 ] ) + np.trace( core1RDM_loc ) # Because full active space is used to compute the energy
+            else:
+                transfo = np.eye( self.Norb, dtype=float )
+                totalOEI  = self.ints.dmet_oei(  transfo, self.Norb )
+                totalFOCK = self.ints.dmet_fock( transfo, self.Norb, OneRDM )
+                self.energy += 0.5 * np.einsum( 'ij,ij->', OneRDM[remainingOrbs==1,:], \
+                         totalOEI[remainingOrbs==1,:] + totalFOCK[remainingOrbs==1,:] )
+                Nelectrons += np.trace( (OneRDM[remainingOrbs==1,:])[:,remainingOrbs==1] )
             remainingOrbs[ remainingOrbs==1 ] -= 1
         assert( np.all( remainingOrbs == 0 ) )
             
@@ -475,8 +495,12 @@ class dmet:
             
             # Find the chemical potential for the correlated impurity problem
             start_ed = time.time()
-            self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
-            print "   Chemical potential =", self.mu_imp
+            if (( self.method == 'CC' ) and ( self.CC_E_TYPE == 'CASCI' )):
+                self.mu_imp = 0.0
+                self.doexact( self.mu_imp )
+            else:
+                self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
+                print "   Chemical potential =", self.mu_imp
             stop_ed = time.time()
             self.time_ed += ( stop_ed - start_ed )
             print "   Energy =", self.energy

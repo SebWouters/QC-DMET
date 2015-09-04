@@ -28,7 +28,7 @@ import sn2_structures
 
 thestructure = 0
 thebasis1 = 'cc-pvdz'
-thebasis2 = 'cc-pvdz' #'aug-cc-pvdz'
+thebasis2 = 'aug-cc-pvdz'
 
 mol = sn2_structures.structure( thestructure, thebasis1, thebasis2 )
 r_C  = np.array( mol.atom[0][1] )

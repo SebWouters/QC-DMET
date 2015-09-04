@@ -79,6 +79,6 @@ for carbons_in_cluster in range( 1, 5 ): #1,2,3,4
     SCmethod = 'NONE' # <--- because only 1 impurity in large HF environment
     theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
     the_energy = theDMET.doselfconsistent()
-    print "######  DMET(", carbons_in_cluster," C , CCSD ) /", thebasis, " =", the_energy
+    print "######  DMET(", carbons_in_cluster," C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy
 
 

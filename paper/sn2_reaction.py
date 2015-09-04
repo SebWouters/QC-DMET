@@ -27,9 +27,10 @@ import numpy as np
 import sn2_structures
 
 thestructure = 0
-thebasis = 'cc-pvdz'
+thebasis1 = 'cc-pvdz'
+thebasis2 = 'cc-pvdz' #'aug-cc-pvdz'
 
-mol = sn2_structures.structure( thestructure, thebasis )
+mol = sn2_structures.structure( thestructure, thebasis1, thebasis2 )
 r_C  = np.array( mol.atom[0][1] )
 r_Cl = np.array( mol.atom[3][1] )
 r_Br = np.array( mol.atom[4][1] )
@@ -60,8 +61,10 @@ myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', local
 myInts.molden( 'sn2-loc.molden' )
 
 unit_sizes = None
-if ( mol.basis == 'cc-pvdz' ):
+if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'cc-pvdz' )):
     unit_sizes = np.array([ 69, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2ClBr, 10xCH2, CH3 (338 orbs total)
+if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'aug-cc-pvdz' )):
+    unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2ClBr, 10xCH2, CH3 (356 orbs total)
 assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
 for carbons_in_cluster in range( 1, 5 ): #1,2,3,4

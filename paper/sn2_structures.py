@@ -19,16 +19,16 @@
 
 from pyscf import gto
 
-def structure( number, thebasis='cc-pvdz' ):
+def structure( number, thebasis1, thebasis2 ):
 
     mol       = None
     irc       = None
     rms_force = None
     rb3lyp    = None #aug-cc-pVTZ for Cl and Br; cc-pVTZ for C and H
+    mol = gto.Mole()
     
     if ( number == 'products' ):
         rb3lyp = -3507.10898482
-        mol = gto.Mole()
         mol.atom = '''
           C        -0.164041   -4.135376    0.640590
           H         0.639357   -4.167820   -0.087920
@@ -70,15 +70,9 @@ def structure( number, thebasis='cc-pvdz' ):
           H        -1.373264   10.539947   -1.994223
           H        -2.160839    9.896184   -0.554208
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 'reactants' ):
         rb3lyp = -3507.09940631
-        mol = gto.Mole()
         mol.atom = '''
           C         0.260366   -4.079946    0.677404
           H        -0.432184   -4.290993   -0.129823
@@ -120,17 +114,11 @@ def structure( number, thebasis='cc-pvdz' ):
           H        -1.737529   10.497618   -2.018197
           H        -2.666694    9.738871   -0.726389
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 0 ):
         irc = 0.00000
         rms_force = 0.000000000
         rb3lyp = -3507.08607494
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.566235   -0.338581    0.149641
           1       -0.541888   -0.522856   -0.903855
@@ -172,17 +160,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -2.203016   14.277422   -2.498496
           1       -3.075049   13.573415   -1.137725
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 1 ):
         irc = 0.30764
         rms_force = 0.000426704
         rb3lyp = -3507.08624655
-        mol = gto.Mole()
         mol.atom = '''
           6        0.020181   -4.065929    0.635246
           1        0.086859   -4.245426   -0.417152
@@ -224,17 +206,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576135   10.554426   -2.011254
           1       -2.448195    9.850412   -0.650491
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 2 ):
         irc = 0.61535
         rms_force = 0.000857784
         rb3lyp = -3507.08675424
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.020153   -4.070404    0.633588
           1        0.089000   -4.244832   -0.416298
@@ -276,17 +252,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576131   10.554436   -2.011218
           1       -2.448210    9.850423   -0.650463
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 3 ):
         irc = 0.92308
         rms_force = 0.001274887
         rb3lyp = -3507.08759932
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.060370   -4.074967    0.631858
           1        0.089842   -4.244069   -0.414120
@@ -328,17 +298,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576132   10.554443   -2.011200
           1       -2.448218    9.850431   -0.650443
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 4 ):
         irc = 1.23068
         rms_force = 0.001662244
         rb3lyp = -3507.08876335
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.100365   -4.079607    0.630094
           1        0.091595   -4.243086   -0.410832
@@ -380,17 +344,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576135   10.554449   -2.011190
           1       -2.448221    9.850437   -0.650428
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 5 ):
         irc = 1.53836
         rms_force = 0.002001096
         rb3lyp = -3507.09021239
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.140083   -4.084308    0.628308
           1        0.089500   -4.242243   -0.406199
@@ -432,17 +390,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576138   10.554456   -2.011180
           1       -2.448223    9.850445   -0.650413
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
     if ( number == 6 ):
         irc = 1.84559
         rms_force = 0.002262587
         rb3lyp = -3507.09189393
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.179445   -4.088952    0.626598
           1        0.088349   -4.241349   -0.401193
@@ -484,17 +436,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576140   10.554463   -2.011173
           1       -2.448225    9.850452   -0.650400
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == 7 ):
         irc = 2.15328
         rms_force = 0.002439520
         rb3lyp = -3507.09374578
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.218389   -4.093558    0.624955
           1        0.083373   -4.240694   -0.395118
@@ -536,17 +482,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576142   10.554471   -2.011166
           1       -2.448226    9.850459   -0.650388
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == 8 ):
         irc = 2.46085
         rms_force = 0.002500873
         rb3lyp = -3507.09568134
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.257010   -4.098093    0.623426
           1        0.077825   -4.240068   -0.388450
@@ -588,17 +528,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576144   10.554479   -2.011159
           1       -2.448227    9.850466   -0.650376
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == 9 ):
         irc = 2.76843
         rms_force = 0.002429491
         rb3lyp = -3507.09759705
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.294971   -4.102443    0.622149
           1        0.069426   -4.239715   -0.381098
@@ -640,17 +574,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576147   10.554488   -2.011153
           1       -2.448228    9.850473   -0.650364
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == 10 ):
         irc = 3.07504
         rms_force = 0.002201149
         rb3lyp = -3507.09936498
-        mol = gto.Mole()
         mol.atom = '''
           6       -0.332112   -4.106456    0.621327
           1        0.060464   -4.239456   -0.373435
@@ -692,17 +620,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576149   10.554495   -2.011146
           1       -2.448229    9.850481   -0.650351
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -1 ):
         irc = -0.30762
         rms_force = 0.000408727
         rb3lyp = -3507.08624231
-        mol = gto.Mole()
         mol.atom = '''
           6        0.101071   -4.057344    0.638447
           1        0.083681   -4.245888   -0.414744
@@ -744,17 +666,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576141   10.554421   -2.011253
           1       -2.448193    9.850398   -0.650497
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -2 ):
         irc = -0.61533
         rms_force = 0.000778561
         rb3lyp = -3507.08670807
-        mol = gto.Mole()
         mol.atom = '''
           6        0.141392   -4.053221    0.639973
           1        0.083642   -4.245618   -0.411558
@@ -796,17 +712,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576146   10.554426   -2.011208
           1       -2.448213    9.850393   -0.650468
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -3 ):
         irc = -0.92292
         rms_force = 0.001097747
         rb3lyp = -3507.08743853
-        mol = gto.Mole()
         mol.atom = '''
           6        0.181492   -4.049228    0.641498
           1        0.084406   -4.245406   -0.407319
@@ -848,17 +758,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576162   10.554423   -2.011197
           1       -2.448214    9.850386   -0.650454
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -4 ):
         irc = -1.23058
         rms_force = 0.001359301
         rb3lyp = -3507.08838751
-        mol = gto.Mole()
         mol.atom = '''
           6        0.221303   -4.045319    0.643027
           1        0.087033   -4.244898   -0.402004
@@ -900,17 +804,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576175   10.554420   -2.011184
           1       -2.448216    9.850377   -0.650438
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -5 ):
         irc = -1.53823
         rms_force = 0.001551547
         rb3lyp = -3507.08950302
-        mol = gto.Mole()
         mol.atom = '''
           6        0.260727   -4.041512    0.644599
           1        0.091578   -4.244287   -0.395817
@@ -952,17 +850,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576189   10.554414   -2.011174
           1       -2.448216    9.850367   -0.650425
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -6 ):
         irc = -1.84588
         rms_force = 0.001658726
         rb3lyp = -3507.09072383
-        mol = gto.Mole()
         mol.atom = '''
           6        0.299630   -4.037796    0.646265
           1        0.097993   -4.243635   -0.388891
@@ -1004,17 +896,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576203   10.554404   -2.011166
           1       -2.448216    9.850353   -0.650411
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -7 ):
         irc = -2.15346
         rms_force = 0.001671038
         rb3lyp = -3507.09197902
-        mol = gto.Mole()
         mol.atom = '''
           6        0.337907   -4.034173    0.648049
           1        0.106120   -4.242919   -0.381225
@@ -1056,17 +942,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576217   10.554389   -2.011159
           1       -2.448215    9.850337   -0.650398
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -8 ):
         irc = -2.46042
         rms_force = 0.001580688
         rb3lyp = -3507.09319269
-        mol = gto.Mole()
         mol.atom = '''
           6        0.375094   -4.030640    0.650163
           1        0.115877   -4.242479   -0.373161
@@ -1108,17 +988,11 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576232   10.554364   -2.011152
           1       -2.448213    9.850313   -0.650381
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
 
     if ( number == -9 ):
         irc = -2.76738
         rms_force = 0.001398583
         rb3lyp = -3507.09429405
-        mol = gto.Mole()
         mol.atom = '''
           6        0.410761   -4.027319    0.652661
           1        0.127055   -4.242114   -0.364171
@@ -1160,11 +1034,14 @@ def structure( number, thebasis='cc-pvdz' ):
           1       -1.576246   10.554318   -2.011148
           1       -2.448209    9.850276   -0.650362
         '''
-        mol.basis = thebasis
-        mol.symmetry = 0
-        mol.charge = -1
-        mol.spin = 0 #2*S; multiplicity-1
-        mol.build()
         
+    mol.basis = { 'H':  thebasis1,
+                  'C':  thebasis1,
+                  'Cl': thebasis2,
+                  'Br': thebasis2 }
+    mol.symmetry = 0
+    mol.charge = -1
+    mol.spin = 0 #2*S; multiplicity-1
+    mol.build()
     return mol
 

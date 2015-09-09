@@ -58,6 +58,7 @@ if ( False ):
     print "ECCSD for structure", thestructure, "=", ECCSD
 
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', localization_threshold=1e-5 )
+#myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'iao' )
 myInts.molden( 'sn2-loc.molden' )
 
 unit_sizes = None

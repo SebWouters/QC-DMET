@@ -24,13 +24,14 @@ from pyscf.future import lo
 from pyscf.future.lo import nao, orth
 from pyscf.tools import molden, localizer
 import rhf
+import iao_helper
 import numpy as np
 
 class localintegrals:
 
     def __init__( self, the_mf, active_orbs, localizationtype, meta_lowdin_rotation=None, use_full_hessian=True, localization_threshold=1e-6 ):
 
-        assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ) or ( localizationtype == 'lowdin' ))
+        assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ) or ( localizationtype == 'lowdin' ) or ( localizationtype == 'iao' ))
         
         # Information on the full HF problem
         self.mol        = the_mf.mol
@@ -63,7 +64,7 @@ class localintegrals:
                 loc = localizer.localizer( self.mol, self.ao2loc, self._which, use_full_hessian )
                 self.mol.verbose = old_verbose
                 self.ao2loc = loc.optimize( threshold=localization_threshold )
-            self.TI_OK  = False # Check yourself if OK, then overwrite
+            self.TI_OK = False # Check yourself if OK, then overwrite
         if ( self._which == 'lowdin' ):
             assert( self.Norbs == self.mol.nao_nr() ) # Full active space required
             ovlp = self.mol.intor('cint1e_ovlp_sph')
@@ -71,6 +72,11 @@ class localintegrals:
             assert ( np.linalg.norm( np.dot( np.dot( ovlp_vecs, np.diag( ovlp_eigs ) ), ovlp_vecs.T ) - ovlp ) < 1e-10 )
             self.ao2loc = np.dot( np.dot( ovlp_vecs, np.diag( np.power( ovlp_eigs, -0.5 ) ) ), ovlp_vecs.T )
             self.TI_OK  = False # Check yourself if OK, then overwrite
+        if ( self._which == 'iao' ):
+            assert( self.Norbs == self.mol.nao_nr() ) # Full active space assumed
+            self.ao2loc = iao_helper.localize_iao( self.mol, the_mf )
+            self.TI_OK = False # Check yourself if OK, then overwrite
+            #self.molden( 'dump.molden' ) # Debugging mode
         assert( self.loc_ortho() < 1e-8 )
         
         # Effective Hamiltonian due to frozen part
@@ -121,37 +127,6 @@ class localintegrals:
         print "2-norm difference of self.activeFOCK and FOCK(RDM(self.active{OEI,ERI})) =", np.linalg.norm( self.activeFOCK - newFOCKloc )
         print "RHF energy of mean-field input           =", self.fullEhf
         print "RHF energy based on self.active{OEI,ERI} =", newRHFener
-        
-    def exact_reference( self, method='ED', printstuff=True ):
-    
-        assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
-        if ( self.ERIinMEM == False ):
-            print "localintegrals::exact_reference : ERI of the localized orbitals are not stored in memory."
-        assert ( self.ERIinMEM == True )
-    
-        print "Exact reference active space ( Norb, Nelec ) = (", self.Norbs, ",", self.Nelec, ")"
-        chemical_pot = 0.0
-        if ( method == 'ED' ):
-            import chemps2
-            GSenergy, GS_1DM = chemps2.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, chemical_pot, printstuff )
-        if ( method == 'CC' ):
-            import pyscf_cc
-            eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
-            eigvecs = eigvecs[ :, eigvals.argsort() ]
-            assert( self.Nelec % 2 == 0 )
-            numPairs = self.Nelec / 2
-            DMguessRHF = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-            GSenergy, GS_1DM = pyscf_cc.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, 'LAMBDA', chemical_pot, printstuff )
-        if ( method == 'MP2' ):
-            import pyscf_mp2
-            eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
-            eigvecs = eigvecs[ :, eigvals.argsort() ]
-            assert( self.Nelec % 2 == 0 )
-            numPairs = self.Nelec / 2
-            DMguessRHF = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-            GSenergy, GS_1DM = pyscf_mp2.solve( self.activeCONST, self.activeOEI, self.activeOEI, self.activeERI, self.Norbs, self.Nelec, self.Norbs, DMguessRHF, chemical_pot, printstuff )
-        print "Total",method,"ground state energy =", GSenergy
-        return GSenergy
         
     def const( self ):
     

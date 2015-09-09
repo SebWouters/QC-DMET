@@ -67,7 +67,6 @@ active  = np.hstack(( pi_orbs[:13], pi_orbs[16] ))
 myInts = localintegrals.localintegrals( mf, active, 'boys' )
 myInts.molden( 'caffeine.molden' )
 method = 'MP2' # Method should be 'ED' or 'CC' or 'MP2'
-myInts.exact_reference( method, False ) # No printing
 
 impurityClusters = []
 for cluster in range(len(active)):

@@ -116,7 +116,6 @@ for atom in range( mol.natm ):
 myInts.molden( 'buckyball.molden' )
 
 method = 'CC'
-#myInts.exact_reference( method, False ) # No printing
 
 nAtomPerImp = 5
 impurityClusters = []

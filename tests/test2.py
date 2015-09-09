@@ -43,7 +43,6 @@ mf.scf()
 
 myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
 myInts.molden( 'qiming_h30sz.molden' )
-#myInts.exact_reference()
 
 #Imp size : 1 - 2 - 5 atoms
 atoms_per_imp = 2

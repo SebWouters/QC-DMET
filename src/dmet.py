@@ -19,7 +19,6 @@
 
 import localintegrals
 import qcdmethelper
-import line_min
 import numpy as np
 from scipy import optimize
 import time
@@ -32,7 +31,7 @@ class dmet:
             assert( theInts.TI_OK == True )
         
         assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
-        assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'LINE' ) or ( SCmethod == 'BFGS' ) or ( SCmethod == 'NONE' ))
+        assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'BFGS' ) or ( SCmethod == 'NONE' ))
         
         self.ints       = theInts
         self.Norb       = self.ints.Norbs
@@ -45,7 +44,7 @@ class dmet:
         self.doSCF      = False
         self.TransInv   = isTranslationInvariant
         self.SCmethod   = SCmethod
-        self.CC_E_TYPE  = 'LAMBDA'
+        self.CC_E_TYPE  = 'LAMBDA' #'CASCI'
         self.fitImpBath = True
         self.doDET      = False
         self.doDET_NO   = False
@@ -516,9 +515,6 @@ class dmet:
             if ( self.SCmethod == 'BFGS' ):
                 result = optimize.minimize( self.costfunction, self.square2flat( self.umat ), jac=self.costfunction_derivative, options={'disp': False} )
                 self.umat = self.flat2square( result.x )
-            if ( self.SCmethod == 'LINE' ):
-                result = line_min.optimize( self.rdm_differences, self.rdm_differences_derivative, self.square2flat( self.umat ) )
-                self.umat = self.flat2square( result )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
             print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
             stop_cf = time.time()

@@ -147,14 +147,10 @@ def localize_iao( mol, mf ):
     ao2loc = np.hstack( ( ao2iao, ao2com ) )
     
     # Reorder the orbitals according to the atom list
-    ao2loc = resort_orbitals( mol, ao2loc )
-    
-    # Check a few things:
-    if ( False ):
-        should_be_0 = np.dot( np.dot( ao2com.T, S1 ), ao2occ )
-        should_be_1 = np.dot( np.dot( ao2loc.T, S1 ), ao2loc )
-        print "QC-DMET :: iao_helper :: norm(     C_comp.T * S * C_occ  ) =", np.linalg.norm( should_be_0 )
-        print "QC-DMET :: iao_helper :: norm( I - C_full.T * S * C_full ) =", np.linalg.norm( should_be_1 - np.eye( should_be_1.shape[0] ) )
+    ao2loc      = resort_orbitals( mol, ao2loc )
+    ao2loc      = orthogonalize_iao( ao2loc, S1 )
+    should_be_1 = np.dot( np.dot( ao2loc.T, S1 ), ao2loc )
+    print "QC-DMET :: iao_helper :: norm( I - C_full.T * S * C_full ) =", np.linalg.norm( should_be_1 - np.eye( should_be_1.shape[0] ) )
     
     return ao2loc
     

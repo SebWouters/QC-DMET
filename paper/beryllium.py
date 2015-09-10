@@ -26,7 +26,7 @@ from pyscf.future.cc import ccsd
 import numpy as np
 
 ###  Disclaimer: run one of the three cases for root following
-casenumber = 1 # 1, 2 or 3
+casenumber = 3 # 1, 2 or 3
 
 if ( casenumber == 1 ):
     thecases = np.arange( 3.6, 2.88, -0.1 )
@@ -67,8 +67,9 @@ for bl in thecases:
 
     #elif ( bl < 3.35 ):
     else:
-        localization_type = 'meta_lowdin'
+        #localization_type = 'meta_lowdin'
         #localization_type = 'boys'
+        localization_type = 'iao'
         rotation = np.eye( mol.nao_nr(), dtype=float )
         for i in range(nat):
             theta  = i * (2*np.pi/nat)
@@ -79,11 +80,11 @@ for bl in thecases:
             rotation[ offset+9:offset+14, offset+9:offset+14 ] = ringhelper.d_functions( theta )
         assert( np.linalg.norm( np.dot( rotation, rotation.T ) - np.eye( rotation.shape[0] ) ) < 1e-6 )
         myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), localization_type, rotation )
-        if ( localization_type == 'meta_lowdin' ):
+        if (( localization_type == 'meta_lowdin' ) or ( localization_type == 'iao' )):
             myInts.TI_OK = True
         myInts.molden( 'Be-loc.molden' )
 
-        atoms_per_imp = 4 # Impurity size = 1/2/4 Be atoms
+        atoms_per_imp = 1 # Impurity size = 1/2/4 Be atoms
         assert ( nat % atoms_per_imp == 0 )
         orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 
@@ -93,7 +94,7 @@ for bl in thecases:
             for orb in range( orbs_per_imp ):
                 impurities[ orbs_per_imp*cluster + orb ] = 1
             impurityClusters.append( impurities )
-        if ( localization_type == 'meta_lowdin' ):
+        if (( localization_type == 'meta_lowdin' ) or ( localization_type == 'iao' )):
             isTranslationInvariant = True
         else:
             isTranslationInvariant = False # Boys TI is not OK

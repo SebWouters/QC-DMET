@@ -29,7 +29,7 @@ import numpy as np
 
 class localintegrals:
 
-    def __init__( self, the_mf, active_orbs, localizationtype, meta_lowdin_rotation=None, use_full_hessian=True, localization_threshold=1e-6 ):
+    def __init__( self, the_mf, active_orbs, localizationtype, ao_rotation=None, use_full_hessian=True, localization_threshold=1e-6 ):
 
         assert (( localizationtype == 'meta_lowdin' ) or ( localizationtype == 'boys' ) or ( localizationtype == 'lowdin' ) or ( localizationtype == 'iao' ))
         
@@ -56,8 +56,8 @@ class localintegrals:
             if ( self.Norbs == self.mol.nao_nr() ): # If you want the full active, do meta-Lowdin
                 nao.AOSHELL[4] = ['1s0p0d0f', '2s1p0d0f'] # redefine the valence shell for Be
                 self.ao2loc = orth.orth_ao( self.mol, 'meta_lowdin' )
-                if ( meta_lowdin_rotation != None ):
-                    self.ao2loc = np.dot( self.ao2loc, meta_lowdin_rotation.T )
+                if ( ao_rotation != None ):
+                    self.ao2loc = np.dot( self.ao2loc, ao_rotation.T )
             if ( self._which == 'boys' ):
                 old_verbose = self.mol.verbose
                 self.mol.verbose = 5
@@ -75,6 +75,8 @@ class localintegrals:
         if ( self._which == 'iao' ):
             assert( self.Norbs == self.mol.nao_nr() ) # Full active space assumed
             self.ao2loc = iao_helper.localize_iao( self.mol, the_mf )
+            if ( ao_rotation != None ):
+                self.ao2loc = np.dot( self.ao2loc, ao_rotation.T )
             self.TI_OK = False # Check yourself if OK, then overwrite
             #self.molden( 'dump.molden' ) # Debugging mode
         assert( self.loc_ortho() < 1e-8 )

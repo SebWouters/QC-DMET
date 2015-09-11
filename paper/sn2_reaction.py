@@ -31,13 +31,15 @@ thebasis1 = 'cc-pvdz'
 thebasis2 = 'aug-cc-pvdz'
 
 mol = sn2_structures.structure( thestructure, thebasis1, thebasis2 )
-r_C  = np.array( mol.atom[0][1] )
-r_Cl = np.array( mol.atom[3][1] )
-r_Br = np.array( mol.atom[4][1] )
-dist_Cl_C = np.linalg.norm( r_C - r_Cl )
-dist_Br_C = np.linalg.norm( r_C - r_Br )
-print "Distance C - Cl =", dist_Cl_C
-print "Distance C - Br =", dist_Br_C
+
+if ( True ):
+    r_C  = np.array( mol.atom[0][1] )
+    r_Cl = np.array( mol.atom[3][1] )
+    r_Br = np.array( mol.atom[4][1] )
+    dist_Cl_C = np.linalg.norm( r_C - r_Cl )
+    dist_Br_C = np.linalg.norm( r_C - r_Br )
+    print "Distance C - Cl =", dist_Cl_C
+    print "Distance C - Br =", dist_Br_C
 
 mf = scf.RHF( mol )
 mf.verbose = 4
@@ -56,30 +58,34 @@ if ( False ):
     ECCSD = mf.hf_energy + ECORR
     print "ERHF  for structure", thestructure, "=", mf.hf_energy
     print "ECCSD for structure", thestructure, "=", ECCSD
-
-myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', localization_threshold=1e-5 )
-#myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'iao' )
-myInts.molden( 'sn2-loc.molden' )
-
-unit_sizes = None
-if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'cc-pvdz' )):
-    unit_sizes = np.array([ 69, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2ClBr, 10xCH2, CH3 (338 orbs total)
-if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'aug-cc-pvdz' )):
-    unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2ClBr, 10xCH2, CH3 (356 orbs total)
-assert( np.sum( unit_sizes ) == mol.nao_nr() )
-
-for carbons_in_cluster in range( 1, 5 ): #1,2,3,4
-    orbs_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster ] )
-    impurityClusters = []
-    impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
-    impurities[ 0 : orbs_in_imp ] = 1
-    impurityClusters.append( impurities )
     
-    isTranslationInvariant = False
-    method = 'CC'
-    SCmethod = 'NONE' # <--- because only 1 impurity in large HF environment
-    theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
-    the_energy = theDMET.doselfconsistent()
-    print "######  DMET(", carbons_in_cluster," C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy
+if ( True ):
 
+    # myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', localization_threshold=1e-5 )
+    # myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
+    myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'iao' )
+    myInts.molden( 'sn2-loc.molden' )
+    
+    unit_sizes = None
+    if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'cc-pvdz' )):
+        unit_sizes = np.array([ 69, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2ClBr, 10xCH2, CH3 (338 orbs total)
+    if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'aug-cc-pvdz' )):
+        unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2ClBr, 10xCH2, CH3 (356 orbs total)
+    assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
+    for carbons_in_cluster in range( 1, 5 ): #1,2,3,4
+        orbs_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster ] )
+        impurityClusters = []
+        impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
+        impurities[ 0 : orbs_in_imp ] = 1
+        impurityClusters.append( impurities )
+    
+        isTranslationInvariant = False
+        method = 'CC'
+        SCmethod = 'NONE' # <--- because only 1 impurity in large HF environment
+        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
+        # theDMET.CC_E_TYPE = 'CASCI'
+        the_energy = theDMET.doselfconsistent()
+        print "######  DMET(", carbons_in_cluster," C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy
+
+    

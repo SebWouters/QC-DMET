@@ -84,7 +84,7 @@ if ( True ):
         method = 'CC'
         SCmethod = 'NONE' # <--- because only 1 impurity in large HF environment
         theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
-        # theDMET.CC_E_TYPE = 'CASCI'
+        theDMET.CC_E_TYPE = 'CASCI'
         the_energy = theDMET.doselfconsistent()
         print "######  DMET(", carbons_in_cluster," C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy
 

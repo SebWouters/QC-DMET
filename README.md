@@ -21,15 +21,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 Building and testing
 --------------------
 
-QC-DMET requires python, numpy, scipy, CMake,
-[libchemps2](https://github.com/SebWouters/CheMPS2), and
-[pyscf](https://github.com/sunqm/pyscf). As of July 7, 2015,
-psi4's coupled cluster solver has been replaced with the
-one from pyscf!
+QC-DMET requires python, numpy, scipy, cmake,
+[chemps2](https://github.com/SebWouters/CheMPS2), and
+[pyscf](https://github.com/sunqm/pyscf).
 
-The path to PyCheMPS2.so can be adjusted in [chemps2.py](src/chemps2.py),
-and the path to the folder in which pyscf is installed in
-[localintegrals.py](src/localintegrals.py).
+The paths to the folders in which PyCheMPS2.so and pyscf
+are installed can be adjusted in [qcdmet_paths.py](src/qcdmet_paths.py).
 
 Go to the folder lib and compile libqcdmet.so:
 
@@ -40,7 +37,7 @@ Go to the folder lib and compile libqcdmet.so:
     > make
     > cd ../..
 
-Start from the files tests/test*.py.
+Start from the files paper/*.py.
 
 Performance testing
 -------------------

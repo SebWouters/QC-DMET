@@ -19,8 +19,9 @@
 
 import numpy as np
 import ctypes
-import os
-import sys
+import os  # for dev/null
+import sys # for sys.stdout
+import qcdmet_paths
 from pyscf import ao2mo, gto, scf, future
 from pyscf.future import cc
 from pyscf.future.cc import ccsd

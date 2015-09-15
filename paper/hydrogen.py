@@ -19,7 +19,7 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet
+import localintegrals, dmet, qcdmet_paths
 from pyscf import gto, scf, ao2mo
 import numpy as np
 

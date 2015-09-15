@@ -19,7 +19,7 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet, ringhelper
+import localintegrals, dmet, ringhelper, qcdmet_paths
 from pyscf import gto, scf, future
 from pyscf.future import cc
 from pyscf.future.cc import ccsd

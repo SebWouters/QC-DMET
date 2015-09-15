@@ -19,7 +19,7 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet
+import localintegrals, dmet, qcdmet_paths
 from pyscf import gto, scf, future, mp
 from pyscf.future import cc
 from pyscf.future.cc import ccsd

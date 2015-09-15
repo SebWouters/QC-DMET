@@ -570,6 +570,7 @@ class dmet:
         
     def dump_bath_orbs( self, filename, impnumber=0 ):
         
+        import qcdmet_paths
         from pyscf import tools
         from pyscf.tools import molden
         with open( filename, 'w' ) as thefile:

@@ -19,6 +19,7 @@
 
 import numpy as np
 import scipy.sparse.linalg
+import qcdmet_paths
 from pyscf import gto, scf, ao2mo
 from pyscf.tools import rhf_newtonraphson
 

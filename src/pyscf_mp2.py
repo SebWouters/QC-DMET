@@ -19,10 +19,11 @@
 
 import numpy as np
 import ctypes
-import os
-import sys
 import rhf
 import localintegrals
+import os  # for dev/null
+import sys # for sys.stdout
+import qcdmet_paths
 from pyscf import gto, scf, ao2mo, mp
 
 def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, printoutput=True ):

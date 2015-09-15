@@ -17,8 +17,7 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
 
-import sys
-sys.path.append('/home/seba') #Folder in which PySCF is installed
+import qcdmet_paths
 from pyscf import gto, scf, ao2mo, tools, future
 from pyscf.future import lo
 from pyscf.future.lo import nao, orth

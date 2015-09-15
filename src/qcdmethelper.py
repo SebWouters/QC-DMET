@@ -110,7 +110,7 @@ class qcdmethelper:
         #print "SP gap =", eigenvals[myNumPairs] - eigenvals[myNumPairs-1]
         return OneDM
         
-    def constructbath( self, OneDM, impurityOrbs, threshold=1e-13 ):
+    def constructbath( self, OneDM, impurityOrbs, numBathOrbs, threshold=1e-13 ):
     
         embeddingOrbs = 1 - impurityOrbs
         embeddingOrbs = np.matrix( embeddingOrbs )
@@ -121,7 +121,6 @@ class qcdmethelper:
         embedding1RDM = np.reshape( OneDM[ isEmbedding ], ( numEmbedOrbs , numEmbedOrbs ) )
 
         numImpOrbs   = np.sum( impurityOrbs )
-        numBathOrbs  = numImpOrbs # Value can be changed later for LR-QC-DMET
         numTotalOrbs = len( impurityOrbs )
         
         eigenvals, eigenvecs = np.linalg.eigh( embedding1RDM )

@@ -159,27 +159,24 @@ mf2.scf()
 #   CCSD reference   #
 ######################
 
-# Always calculate the CCSD energy of the small molecule (2)
+# Always calculate the CCSD energy of the small molecule (mol2)
 ccsolver2 = ccsd.CCSD( mf2 )
 ccsolver2.verbose = 5
 ECORR2, t1, t2 = ccsolver2.ccsd()
 ERHF2 = mf2.hf_energy
 ECCSD2 = ERHF2 + ECORR2
 
-if ( True ):
+if ( False ):
     ccsolver1 = ccsd.CCSD( mf1 )
     ccsolver1.verbose = 5
     ECORR1, t1, t2 = ccsolver1.ccsd()
     ECCSD1 = mf1.hf_energy + ECORR1
     print "ERHF  for structure", thestructure, "=", mf1.hf_energy + ERHF2
     print "ECCSD for structure", thestructure, "=", ECCSD1 + ECCSD2
-    '''
-        ERHF  (reactants) =
-        ECCSD (reactants) =
-        ERHF  (products)  =
-        ECCSD (products)  =
-    '''
-    exit(123)
+    # ERHF  (reactants) = -925.856396874
+    # ECCSD (reactants) = -927.858808954
+    # ERHF  (products)  = -925.964797448
+    # ECCSD (products)  = -927.949282439
 
 ############
 #   DMET   #

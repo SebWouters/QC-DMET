@@ -90,15 +90,15 @@ if ( True ):
     unit_sizes = None
     if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'aug-cc-pvdz' )):
         if ( thestructure == 'reactants_infinity' ): # C12H25Br
-            unit_sizes = np.array([ 60, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2Br, 10xCH2, CH3 (329 orbs total)
+            unit_sizes = np.array([ 36, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Br, 11xCH2, CH3 (329 orbs total)
         elif ( thestructure == 'products_infinity' ): # C12H25Cl
-            unit_sizes = np.array([ 51, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2Cl, 10xCH2, CH3 (320 orbs total)
+            unit_sizes = np.array([ 27, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Cl, 11xCH2, CH3 (320 orbs total)
         else:
-            unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # CH2ClBr, 10xCH2, CH3 (356 orbs total)
+            unit_sizes = np.array([ 63, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # ClBr, 11xCH2, CH3 (356 orbs total)
     assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
-    for carbons_in_cluster in range( 1, 5 ): #1,2,3,4
-        orbs_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster ] )
+    for carbons_in_cluster in range( 0, 7 ): #0,1,2,3,4,5,6
+        orbs_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster+1 ] )
         impurityClusters = []
         impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
         impurities[ 0 : orbs_in_imp ] = 1
@@ -106,6 +106,7 @@ if ( True ):
 
         theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant=False, method='CC', SCmethod='NONE' )
         theDMET.CC_E_TYPE = 'CASCI'
+        theDMET.BATH_ORBS = 1 # Qiming, JCTC 10, 3784 (2014) [ http://dx.doi.org/10.1021/ct500512f ] for a C-C single bond
         the_energy = theDMET.doselfconsistent()
         print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy + ECCSD_extra
 

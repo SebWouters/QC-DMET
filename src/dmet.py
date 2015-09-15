@@ -45,6 +45,7 @@ class dmet:
         self.TransInv   = isTranslationInvariant
         self.SCmethod   = SCmethod
         self.CC_E_TYPE  = 'LAMBDA' #'CASCI'
+        self.BATH_ORBS  = None
         self.fitImpBath = True
         self.doDET      = False
         self.doDET_NO   = False
@@ -174,8 +175,8 @@ class dmet:
         self.imp_1RDM = []
         self.dmetOrbs = []
         if ( self.doDET == True ) and ( self.doDET_NO == True ):
-            self.NOvecs     = []
-            self.NOdiag     = []
+            self.NOvecs = []
+            self.NOdiag = []
         
         maxiter = len( self.impClust )
         if ( self.TransInv == True ):
@@ -187,7 +188,11 @@ class dmet:
         
             impurityOrbs = self.impClust[ counter ]
             numImpOrbs   = np.sum( impurityOrbs )
-            numBathOrbs, loc2dmet, core1RDM_dmet = self.helper.constructbath( OneRDM, impurityOrbs )
+            if ( self.BATH_ORBS == None ):
+                numBathOrbs = numImpOrbs
+            else:
+                numBathOrbs = self.BATH_ORBS
+            numBathOrbs, loc2dmet, core1RDM_dmet = self.helper.constructbath( OneRDM, impurityOrbs, numBathOrbs )
             for cnt in range(len(core1RDM_dmet)):
                 if ( core1RDM_dmet[ cnt ] < 0.01 ):
                     core1RDM_dmet[ cnt ] = 0.0

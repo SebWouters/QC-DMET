@@ -90,15 +90,15 @@ if ( True ):
     unit_sizes = None
     if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'aug-cc-pvdz' )):
         if ( thestructure == 'reactants_infinity' ): # C12H25Br
-            unit_sizes = np.array([ 36, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Br, 11xCH2, CH3 (329 orbs total)
+            unit_sizes = np.array([ 60, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Br, 11xCH2, CH3 (329 orbs total)
         elif ( thestructure == 'products_infinity' ): # C12H25Cl
-            unit_sizes = np.array([ 27, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Cl, 11xCH2, CH3 (320 orbs total)
+            unit_sizes = np.array([ 51, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Cl, 11xCH2, CH3 (320 orbs total)
         else:
-            unit_sizes = np.array([ 63, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # ClBr, 11xCH2, CH3 (356 orbs total)
+            unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # ClBr, 11xCH2, CH3 (356 orbs total)
     assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
-    for carbons_in_cluster in range( 0, 7 ): #0,1,2,3,4,5,6
-        orbs_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster+1 ] )
+    for carbons_in_cluster in range( 1, 7 ): #1,2,3,4,5,6
+        orbs_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster ] )
         impurityClusters = []
         impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
         impurities[ 0 : orbs_in_imp ] = 1

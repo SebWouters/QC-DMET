@@ -173,6 +173,12 @@ if ( True ):
     ECCSD1 = mf1.hf_energy + ECORR1
     print "ERHF  for structure", thestructure, "=", mf1.hf_energy + ERHF2
     print "ECCSD for structure", thestructure, "=", ECCSD1 + ECCSD2
+    '''
+        ERHF  (reactants) =
+        ECCSD (reactants) =
+        ERHF  (products)  =
+        ECCSD (products)  =
+    '''
     exit(123)
 
 ############
@@ -180,8 +186,6 @@ if ( True ):
 ############
 
 if ( True ):
-    # myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', localization_threshold=1e-5 )
-    # myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
     myInts = localintegrals.localintegrals( mf2, range( mol2.nao_nr() ), 'iao' )
     myInts.molden( 'emft-loc.molden' )
     
@@ -199,11 +203,8 @@ if ( True ):
         impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
         impurities[ 0 : orbs_in_imp ] = 1
         impurityClusters.append( impurities )
-    
-        isTranslationInvariant = False
-        method = 'CC'
-        SCmethod = 'NONE'
-        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
+
+        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant=False, method='CC', SCmethod='NONE' )
         theDMET.CC_E_TYPE = 'CASCI'
         the_energy = theDMET.doselfconsistent()
         print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy + ECCSD2

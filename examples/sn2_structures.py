@@ -1146,7 +1146,7 @@ def structure( number, thebasis1, thebasis2 ):
                   'Cl': thebasis2,
                   'Br': thebasis2 }
     mol.symmetry = 0
-    if ( 'infinity' in number ):
+    if ( 'infinity' in str(number) ):
         mol.charge = 0
     else:
         mol.charge = -1

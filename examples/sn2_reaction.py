@@ -40,7 +40,7 @@ thebasis2 = 'aug-cc-pvdz'
 
 mol = sn2_structures.structure( thestructure, thebasis1, thebasis2 )
 
-if (( True ) and ('infinity' not in thestructure)):
+if (( True ) and ( 'infinity' not in str(thestructure) )):
     r_C  = np.array( mol.atom[0][1] )
     r_Cl = np.array( mol.atom[3][1] )
     r_Br = np.array( mol.atom[4][1] )
@@ -53,7 +53,7 @@ mf = scf.RHF( mol )
 mf.verbose = 4
 mf.scf()
 
-if ( 'infinity' in thestructure ):
+if ( 'infinity' in str(thestructure) ):
     atom = sn2_structures.structure( thestructure.replace( 'infinity', 'atom' ), thebasis1, thebasis2 )
     mf_atom = scf.RHF( atom )
     mf_atom.verbose = 4
@@ -103,13 +103,10 @@ if ( True ):
         impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
         impurities[ 0 : orbs_in_imp ] = 1
         impurityClusters.append( impurities )
-    
-        isTranslationInvariant = False
-        method = 'CC'
-        SCmethod = 'NONE' # <--- because only 1 impurity in large HF environment
-        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
+
+        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant=False, method='CC', SCmethod='NONE' )
         theDMET.CC_E_TYPE = 'CASCI'
         the_energy = theDMET.doselfconsistent()
-        print "######  DMET(", carbons_in_cluster," C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy + ECCSD_extra
+        print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy + ECCSD_extra
 
     

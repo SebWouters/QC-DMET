@@ -37,7 +37,7 @@ Go to the folder lib and compile libqcdmet.so:
     > make
     > cd ../..
 
-Start from the files paper/*.py.
+Start from the files examples/*.py.
 
 Performance testing
 -------------------

@@ -26,46 +26,25 @@ from pyscf.future.cc import ccsd
 import numpy as np
 import sn2_structures
 
-'''
-   thestructure can be
-      * 'reactants_infinity'
-      * 'reactants' (van der Waals bound ion)
-      * any integer in the range [-9, 10] (boundaries included)
-      * 'products'  (van der Waals bound ion)
-      * 'products_infinity'
-'''
-thestructure = 0
-thebasis1 = 'cc-pvdz'
-thebasis2 = 'aug-cc-pvdz'
+#############
+#   Input   #
+#############
+thestructure = 0                    # 'reactants' or 'products' or any integer in the range [-9, 10] (boundaries included)
+cluster_sizes = np.arange( 1, 7 )   # Number of carbon atoms per cluster
+localization = 'iao'                # 'iao' or 'meta_lowdin' or 'boys'
+single_impurity = True              # Single impurity vs. partitioning
+one_bath_orb_per_bond = True        # Sun & Chan, JCTC 10, 3784 (2014) [ http://dx.doi.org/10.1021/ct500512f ]
+casci_energy_formula = True         # CASCI or DMET energy formula
 
+#######################
+#   Parse the input   #
+#######################
+thebasis1 = 'cc-pvdz'       # Basis set for H and C
+thebasis2 = 'aug-cc-pvdz'   # Basis set for Cl and Br
 mol = sn2_structures.structure( thestructure, thebasis1, thebasis2 )
-
-if (( True ) and ( 'infinity' not in str(thestructure) )):
-    r_C  = np.array( mol.atom[0][1] )
-    r_Cl = np.array( mol.atom[3][1] )
-    r_Br = np.array( mol.atom[4][1] )
-    dist_Cl_C = np.linalg.norm( r_C - r_Cl )
-    dist_Br_C = np.linalg.norm( r_C - r_Br )
-    print "Distance C - Cl =", dist_Cl_C
-    print "Distance C - Br =", dist_Br_C
-
 mf = scf.RHF( mol )
 mf.verbose = 4
 mf.scf()
-
-if ( 'infinity' in str(thestructure) ):
-    atom = sn2_structures.structure( thestructure.replace( 'infinity', 'atom' ), thebasis1, thebasis2 )
-    mf_atom = scf.RHF( atom )
-    mf_atom.verbose = 4
-    mf_atom.scf()
-    ccsolver = ccsd.CCSD( mf_atom )
-    ccsolver.verbose = 5
-    ECORR, t1, t2 = ccsolver.ccsd()
-    ERHF_extra  = mf_atom.hf_energy
-    ECCSD_extra = mf_atom.hf_energy + ECORR
-else:
-    ERHF_extra  = 0.0
-    ECCSD_extra = 0.0
 
 if ( False ):
     from pyscf.tools import molden, localizer
@@ -78,8 +57,8 @@ if ( False ):
     ccsolver.verbose = 5
     ECORR, t1, t2 = ccsolver.ccsd()
     ECCSD = mf.hf_energy + ECORR
-    print "ERHF  for structure", thestructure, "=", mf.hf_energy + ERHF_extra
-    print "ECCSD for structure", thestructure, "=", ECCSD + ECCSD_extra
+    print "ERHF  for structure", thestructure, "=", mf.hf_energy
+    print "ECCSD for structure", thestructure, "=", ECCSD
     
 if ( True ):
     # myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', localization_threshold=1e-5 )
@@ -89,25 +68,34 @@ if ( True ):
     
     unit_sizes = None
     if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'aug-cc-pvdz' )):
-        if ( thestructure == 'reactants_infinity' ): # C12H25Br
-            unit_sizes = np.array([ 60, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Br, 11xCH2, CH3 (329 orbs total)
-        elif ( thestructure == 'products_infinity' ): # C12H25Cl
-            unit_sizes = np.array([ 51, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # Cl, 11xCH2, CH3 (320 orbs total)
-        else:
-            unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # ClBr, 11xCH2, CH3 (356 orbs total)
+        unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # ClBr, 11xCH2, CH3 (356 orbs total)
     assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
-    for carbons_in_cluster in range( 1, 7 ): #1,2,3,4,5,6
-        orbs_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster ] )
+    for carbons_in_cluster in cluster_sizes:
         impurityClusters = []
-        impurities = np.zeros( [ mol.nao_nr() ], dtype=int )
-        impurities[ 0 : orbs_in_imp ] = 1
-        impurityClusters.append( impurities )
+        if ( single_impurity == True ): # Do only 1 impurity at the edge
+            num_orb_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster ] )
+            impurity_orbitals = np.zeros( [ mol.nao_nr() ], dtype=int )
+            impurity_orbitals[ 0 : num_orb_in_imp ] = 1
+            impurityClusters.append( impurity_orbitals )
+        else: # Partition
+            atoms_passed = 0
+            jump = 0
+            while ( atoms_passed < len( unit_sizes ) ):
+                num_carb_in_imp = min( carbons_in_cluster, len( unit_sizes ) - atoms_passed )
+                num_orb_in_imp = np.sum( unit_sizes[ atoms_passed : atoms_passed + num_carb_in_imp ] )
+                impurity_orbitals = np.zeros( [ mol.nao_nr() ], dtype=int )
+                impurity_orbitals[ jump : jump + num_orb_in_imp ] = 1
+                impurityClusters.append( impurity_orbitals )
+                atoms_passed += num_carb_in_imp
+                jump += num_orb_in_imp
 
         theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant=False, method='CC', SCmethod='NONE' )
-        theDMET.CC_E_TYPE = 'CASCI'
-        theDMET.BATH_ORBS = 1 # Qiming, JCTC 10, 3784 (2014) [ http://dx.doi.org/10.1021/ct500512f ] for a C-C single bond
+        if ( casci_energy_formula == True ):
+            theDMET.CC_E_TYPE = 'CASCI'
+        if ( one_bath_orb_per_bond == True ):
+            theDMET.BATH_ORBS = 1
         the_energy = theDMET.doselfconsistent()
-        print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy + ECCSD_extra
+        print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy
 
     

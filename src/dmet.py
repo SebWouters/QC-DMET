@@ -193,10 +193,14 @@ class dmet:
             else:
                 numBathOrbs = self.BATH_ORBS
             numBathOrbs, loc2dmet, core1RDM_dmet = self.helper.constructbath( OneRDM, impurityOrbs, numBathOrbs )
+            if ( self.BATH_ORBS == None ):
+                core_cutoff = 0.01
+            else:
+                core_cutoff = 0.5
             for cnt in range(len(core1RDM_dmet)):
-                if ( core1RDM_dmet[ cnt ] < 0.01 ):
+                if ( core1RDM_dmet[ cnt ] < core_cutoff ):
                     core1RDM_dmet[ cnt ] = 0.0
-                elif ( core1RDM_dmet[ cnt ] > 1.99 ):
+                elif ( core1RDM_dmet[ cnt ] > 2.0 - core_cutoff ):
                     core1RDM_dmet[ cnt ] = 2.0
                 else:
                     print "Bad DMET bath orbital selection: trying to put a bath orbital with occupation", core1RDM_dmet[ cnt ], "into the environment :-(."

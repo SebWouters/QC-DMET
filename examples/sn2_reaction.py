@@ -94,7 +94,9 @@ if ( True ):
         if ( casci_energy_formula == True ):
             theDMET.CC_E_TYPE = 'CASCI'
         if ( one_bath_orb_per_bond == True ):
-            theDMET.BATH_ORBS = 1
+            theDMET.BATH_ORBS = 2 * np.ones( [ len(impurityClusters) ], dtype=int )
+            theDMET.BATH_ORBS[ 0 ] = 1
+            theDMET.BATH_ORBS[ len(impurityClusters) - 1 ] = 1
         the_energy = theDMET.doselfconsistent()
         print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy
 

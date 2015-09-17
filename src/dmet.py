@@ -191,7 +191,7 @@ class dmet:
             if ( self.BATH_ORBS == None ):
                 numBathOrbs = numImpOrbs
             else:
-                numBathOrbs = self.BATH_ORBS
+                numBathOrbs = self.BATH_ORBS[ counter ]
             numBathOrbs, loc2dmet, core1RDM_dmet = self.helper.constructbath( OneRDM, impurityOrbs, numBathOrbs )
             if ( self.BATH_ORBS == None ):
                 core_cutoff = 0.01

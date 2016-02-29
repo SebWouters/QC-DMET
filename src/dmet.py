@@ -25,7 +25,7 @@ import time
 
 class dmet:
 
-    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED', SCmethod='LSTSQ' ):
+    def __init__( self, theInts, impurityClusters, isTranslationInvariant, method='ED', SCmethod='LSTSQ', fitImpBath=True, use_constrained_opt=False ):
     
         if ( isTranslationInvariant == True ):
             assert( theInts.TI_OK == True )
@@ -46,10 +46,18 @@ class dmet:
         self.SCmethod   = SCmethod
         self.CC_E_TYPE  = 'LAMBDA' #'CASCI'
         self.BATH_ORBS  = None
-        self.fitImpBath = True
+        self.fitImpBath = fitImpBath
         self.doDET      = False
         self.doDET_NO   = False
         self.NOrotation = None
+        self.altcostfunc = use_constrained_opt
+
+        self.minFunc    = None
+        if self.altcostfunc:
+            self.minFunc = 'FOCK_INIT'  # 'OEI'
+            assert (self.fitImpBath == False)
+            assert (self.doDET == False)
+            assert (self.SCmethod == 'BFGS' or self.SCmethod == 'NONE')
         
         if (( self.method == 'CC' ) and ( self.CC_E_TYPE == 'CASCI' )):
             assert( len( self.impClust ) == 1 )
@@ -75,7 +83,7 @@ class dmet:
         self.imp_size = self.make_imp_size()
         self.mu_imp   = 0.0
         self.mask     = self.make_mask()
-        self.helper   = qcdmethelper.qcdmethelper( self.ints, self.makelist_H1() )
+        self.helper   = qcdmethelper.qcdmethelper( self.ints, self.makelist_H1(), self.altcostfunc, self.minFunc )
         
         self.time_ed  = 0.0
         self.time_cf  = 0.0
@@ -312,6 +320,22 @@ class dmet:
     def costfunction( self, newumatflat ):
 
         return np.linalg.norm( self.rdm_differences( newumatflat ) )**2
+
+    def alt_costfunction( self, newumatflat ):
+
+        newumatsquare_loc = self.flat2square( newumatflat )
+        OneRDM_loc = self.helper.construct1RDM_loc( self.doSCF, newumatsquare_loc )
+
+        errors    = self.rdm_differences_bis( newumatflat )
+        errors_sq = self.flat2square (errors)
+
+        if self.minFunc == 'OEI' :
+            e_fun = np.trace( np.dot(self.ints.loc_oei(), OneRDM_loc) )
+        elif self.minFunc == 'FOCK_INIT' :
+            e_fun = np.trace( np.dot(self.ints.loc_rhf_fock(), OneRDM_loc) )
+        # e_cstr = np.sum( newumatflat * errors )    # not correct, but gives correct verify_gradient results
+        e_cstr = np.sum( newumatsquare_loc * errors_sq )
+        return -e_fun-e_cstr
         
     def costfunction_derivative( self, newumatflat ):
         
@@ -321,6 +345,11 @@ class dmet:
         for counter in range( len( newumatflat ) ):
             thegradient[ counter ] = 2 * np.sum( np.multiply( error_derivs[ : , counter ], errors ) )
         return thegradient
+
+    def alt_costfunction_derivative( self, newumatflat ):
+        
+        errors = self.rdm_differences_bis( newumatflat )
+        return -errors
     
     def rdm_differences( self, newumatflat ):
     
@@ -368,6 +397,42 @@ class dmet:
         
         return errors
         
+    def rdm_differences_bis( self, newumatflat ):
+    
+        start_func = time.time()
+    
+        newumatsquare_loc = self.flat2square( newumatflat )
+        OneRDM_loc = self.helper.construct1RDM_loc( self.doSCF, newumatsquare_loc )
+
+        thesize = 0
+        jump = 0
+        for count in range(len(self.imp_size)):
+            # thesize += self.imp_size[ count ] * self.imp_size[ count ]
+            mask_t = self.mask[ np.ix_(range(jump,jump+self.imp_size[count]),range(jump,jump+self.imp_size[count])) ]
+            thesize += np.count_nonzero( mask_t )
+            jump += self.imp_size[count]
+        errors = np.zeros( [ thesize ], dtype=float )
+        
+        jump = 0
+        jumpc = 0
+        for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
+            mf_1RDM = (OneRDM_loc[:,self.impClust[count]==1])[self.impClust[count]==1,:]
+            ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
+            theerror = mf_1RDM - ed_1RDM
+            # squaresize = theerror.shape[0] * theerror.shape[1]
+            # errors[ jump : jump + squaresize ] = np.reshape( theerror, squaresize, order='F' )
+            mask_t = self.mask[ np.ix_(range(jumpc,jumpc+self.imp_size[count]),range(jumpc,jumpc+self.imp_size[count])) ]
+            squaresize = np.count_nonzero( mask_t )
+            errors[ jump : jump + squaresize ] = np.reshape( theerror[mask_t], squaresize, order='F' )
+            jump  += squaresize
+            jumpc += self.imp_size[count]
+        assert ( jump == thesize )
+        
+        stop_func = time.time()
+        self.time_func += ( stop_func - start_func )
+        
+        return errors
+
     def rdm_differences_derivative( self, newumatflat ):
         
         start_grad = time.time()
@@ -513,19 +578,25 @@ class dmet:
             self.time_ed += ( stop_ed - start_ed )
             print "   Energy =", self.energy
             # self.verify_gradient( self.square2flat( self.umat ) ) # Only works for self.doSCF == False!!
-            if ( self.SCmethod != 'NONE' ):
+            if ( self.SCmethod != 'NONE' and not(self.altcostfunc) ):
                 self.hessian_eigenvalues( self.square2flat( self.umat ) )
             
             # Solve for the u-matrix
             start_cf = time.time()
-            if ( self.SCmethod == 'LSTSQ' ):
+            if ( self.altcostfunc and self.SCmethod == 'BFGS' ):
+                result = optimize.minimize( self.alt_costfunction, self.square2flat( self.umat ), jac=self.alt_costfunction_derivative, options={'disp': False} )
+                self.umat = self.flat2square( result.x )
+            elif ( self.SCmethod == 'LSTSQ' ):
                 result = optimize.leastsq( self.rdm_differences, self.square2flat( self.umat ), Dfun=self.rdm_differences_derivative, factor=0.1 )
                 self.umat = self.flat2square( result[ 0 ] )
-            if ( self.SCmethod == 'BFGS' ):
+            elif ( self.SCmethod == 'BFGS' ):
                 result = optimize.minimize( self.costfunction, self.square2flat( self.umat ), jac=self.costfunction_derivative, options={'disp': False} )
                 self.umat = self.flat2square( result.x )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
-            print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
+            if ( self.altcostfunc ):
+                print "   Cost function after convergence =", self.alt_costfunction( self.square2flat( self.umat ) )
+            else:
+                print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
             stop_cf = time.time()
             self.time_cf += ( stop_cf - start_cf )
             

@@ -25,11 +25,17 @@ lib_qcdmet = ctypes.CDLL('../lib/libqcdmet.so')
 
 class qcdmethelper:
 
-    def __init__( self, theLocalIntegrals, list_H1 ):
+    def __init__( self, theLocalIntegrals, list_H1, altcf, minFunc ):
     
         self.locints = theLocalIntegrals
         assert( self.locints.Nelec % 2 == 0 )
         self.numPairs = self.locints.Nelec / 2
+        self.altcf = altcf
+        self.minFunc = None
+
+        if self.altcf:
+            assert (minFunc == 'OEI' or minFunc == 'FOCK_INIT')
+            self.minFunc = minFunc
         
         # Variables for c gradient calculation
         self.list_H1 = list_H1
@@ -61,7 +67,12 @@ class qcdmethelper:
     def construct1RDM_loc( self, doSCF, umat_loc ):
         
         # Everything in this functions works in the original local AO / lattice basis!
-        OEI   = self.locints.loc_rhf_fock() + umat_loc
+        if self.altcf and self.minFunc == 'OEI' :
+            OEI = self.locints.loc_oei() + umat_loc
+        elif self.altcf and self.minFunc == 'FOCK_INIT' :
+            OEI = self.locints.loc_rhf_fock() + umat_loc
+        else:
+            OEI   = self.locints.loc_rhf_fock() + umat_loc
         DMloc = self.construct1RDM_base( OEI, self.numPairs )
         if ( doSCF == True ):
             if ( self.locints.ERIinMEM == True ):

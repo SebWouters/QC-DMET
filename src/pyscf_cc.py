@@ -22,9 +22,8 @@ import ctypes
 import os  # for dev/null
 import sys # for sys.stdout
 import qcdmet_paths
-from pyscf import ao2mo, gto, scf, future
-from pyscf.future import cc
-from pyscf.future.cc import ccsd
+from pyscf import ao2mo, gto, scf
+from pyscf.cc import ccsd
 from pyscf.tools import rhf_newtonraphson
 
 def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBDA', chempot_imp=0.0, printoutput=True ):

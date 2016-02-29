@@ -17,21 +17,24 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
 
+# C12H25F + F-  -->  C12H25F + F-
+
 import sys
 sys.path.append('../src')
 import localintegrals, dmet, qcdmet_paths
 from pyscf import gto, scf, symm, future
-from pyscf.future import cc
-from pyscf.future.cc import ccsd
+from pyscf.cc import ccsd
 import numpy as np
-import sn2_structures
+import sn2_struct
 
 #############
 #   Input   #
 #############
-thestructure = 0                    # 'reactants' or 'products' or any integer in the range [-9, 10] (boundaries included)
-cluster_sizes = np.arange( 1, 7 )   # Number of carbon atoms per cluster
+thestructure = 0                    # any integer in the range [0,8] (inclusive)
+cluster_sizes = np.arange( 1, 5 )   # Number of carbon atoms per cluster
 localization = 'iao'                # 'iao' or 'meta_lowdin' or 'boys'
+# careful with 'iao'; the generic IAO scheme implemented in QC-DMET will not reproduce
+# results in the manuscript, which use a more careful IAO construction
 single_impurity = True              # Single impurity vs. partitioning
 one_bath_orb_per_bond = True        # Sun & Chan, JCTC 10, 3784 (2014) [ http://dx.doi.org/10.1021/ct500512f ]
 casci_energy_formula = True         # CASCI or DMET energy formula
@@ -40,7 +43,7 @@ casci_energy_formula = True         # CASCI or DMET energy formula
 #   Parse the input   #
 #######################
 thebasis1 = 'cc-pvdz'       # Basis set for H and C
-thebasis2 = 'aug-cc-pvdz'   # Basis set for Cl and Br
+thebasis2 = 'cc-pvdz'       # Basis set for F
 mol = sn2_structures.structure( thestructure, thebasis1, thebasis2 )
 mf = scf.RHF( mol )
 mf.verbose = 4
@@ -67,8 +70,8 @@ if ( True ):
     myInts.molden( 'sn2-loc.molden' )
     
     unit_sizes = None
-    if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'aug-cc-pvdz' )):
-        unit_sizes = np.array([ 87, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # ClBr, 11xCH2, CH3 (356 orbs total)
+    if (( thebasis1 == 'cc-pvdz' ) and ( thebasis2 == 'cc-pvdz' )):
+        unit_sizes = np.array([ 52, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 29 ]) # ClBr, 11xCH2, CH3 (356 orbs total)
     assert( np.sum( unit_sizes ) == mol.nao_nr() )
 
     for carbons_in_cluster in cluster_sizes:

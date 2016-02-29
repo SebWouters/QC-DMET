@@ -21,8 +21,7 @@ import sys
 sys.path.append('../src')
 import localintegrals, dmet, ringhelper, qcdmet_paths
 from pyscf import gto, scf, future
-from pyscf.future import cc
-from pyscf.future.cc import ccsd
+from pyscf.cc import ccsd
 import numpy as np
 
 ###  Disclaimer: run one of the three cases for root following
@@ -40,7 +39,7 @@ print "Bond lengths (Angstrom) =", thecases
 DMguess = None
 for bl in thecases:
 
-    nat = 12
+    nat = 30
     mol = gto.Mole()
     mol.atom = []
     r = 0.5 * bl / np.sin(np.pi/nat)
@@ -48,7 +47,7 @@ for bl in thecases:
         theta = i * (2*np.pi/nat)
         mol.atom.append(('Be', (r*np.cos(theta), r*np.sin(theta), 0)))
 
-    mol.basis = { 'Be': 'cc-pvdz', }
+    mol.basis = { 'Be': 'sto-6g', }
     mol.build(verbose=0)
 
     mf = scf.RHF(mol)
@@ -70,21 +69,21 @@ for bl in thecases:
         #localization_type = 'meta_lowdin'
         #localization_type = 'boys'
         localization_type = 'iao'
+        # careful with 'iao'; the generic IAO scheme implemented in QC-DMET will not reproduce
+        # results in the manuscript, which use a more careful IAO construction
         rotation = np.eye( mol.nao_nr(), dtype=float )
         for i in range(nat):
             theta  = i * (2*np.pi/nat)
-            offset = 14 * i # 14 basisfunctions in cc-pVDZ
+            offset = 5 * i # 5 basisfunctions in sto-6g
             # Order of AO: 3s 2p 1d
-            rotation[ offset+3:offset+6,  offset+3:offset+6  ] = ringhelper.p_functions( theta )
-            rotation[ offset+6:offset+9,  offset+6:offset+9  ] = ringhelper.p_functions( theta )
-            rotation[ offset+9:offset+14, offset+9:offset+14 ] = ringhelper.d_functions( theta )
+            rotation[ offset+2:offset+5,  offset+2:offset+5  ] = ringhelper.p_functions( theta )
         assert( np.linalg.norm( np.dot( rotation, rotation.T ) - np.eye( rotation.shape[0] ) ) < 1e-6 )
         myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), localization_type, rotation )
         if (( localization_type == 'meta_lowdin' ) or ( localization_type == 'iao' )):
             myInts.TI_OK = True
         myInts.molden( 'Be-loc.molden' )
 
-        atoms_per_imp = 1 # Impurity size = 1/2/4 Be atoms
+        atoms_per_imp = 1 # Impurity size = 1/2/3/5/6 Be atoms
         assert ( nat % atoms_per_imp == 0 )
         orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 

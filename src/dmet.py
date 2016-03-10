@@ -96,7 +96,7 @@ class dmet:
     
         quicktest = np.zeros([ self.Norb ], dtype=int)
         for item in self.impClust:
-            quicktest += item
+            quicktest += np.abs(item)
         assert( np.all( quicktest >= 0 ) )
         assert( np.all( quicktest <= 1 ) )
         allOne = np.all( quicktest == 1 )
@@ -109,7 +109,7 @@ class dmet:
         if ( self.TransInv == True ):
             maxiter = 1
         for counter in range( maxiter ):
-            impurityOrbs = self.impClust[ counter ]
+            impurityOrbs = np.abs(self.impClust[ counter ])
             numImpOrbs = np.sum( impurityOrbs )
             thearray.append( numImpOrbs )
         thearray = np.array( thearray )
@@ -194,7 +194,8 @@ class dmet:
         
         for counter in range( maxiter ):
         
-            impurityOrbs = self.impClust[ counter ]
+            flag_rhf = np.sum(self.impClust[ counter ]) < 0
+            impurityOrbs = np.abs(self.impClust[ counter ])
             numImpOrbs   = np.sum( impurityOrbs )
             if ( self.BATH_ORBS == None ):
                 numBathOrbs = numImpOrbs
@@ -236,15 +237,19 @@ class dmet:
                 dmetFOCK = np.array( dmetOEI, copy=True )
             
             print "DMET::exact : Performing a (", Norb_in_imp, "orb,", Nelec_in_imp, "el ) DMET active space calculation."
-            if ( self.method == 'ED' ):
+            if ( flag_rhf ):
+                import pyscf_rhf
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = pyscf_rhf.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
+            elif ( self.method == 'ED' ):
                 import chemps2
                 IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, chempot_imp )
-            if ( self.method == 'CC' ):
+            elif ( self.method == 'CC' ):
                 import pyscf_cc
                 assert( Nelec_in_imp % 2 == 0 )
                 DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
                 IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, self.CC_E_TYPE, chempot_imp )
-            if ( self.method == 'MP2' ):
+            elif ( self.method == 'MP2' ):
                 import pyscf_mp2
                 assert( Nelec_in_imp % 2 == 0 )
                 DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
@@ -376,7 +381,7 @@ class dmet:
                 mf_1RDM = np.dot( np.dot( self.dmetOrbs[ count ].T, OneRDM_loc ), self.dmetOrbs[ count ] )
                 ed_1RDM = self.imp_1RDM[count]
             else:
-                mf_1RDM = (OneRDM_loc[:,self.impClust[count]==1])[self.impClust[count]==1,:]
+                mf_1RDM = (OneRDM_loc[:,np.nonzero(self.impClust[count])])[np.nonzero(self.impClust[count]),:]
                 ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
             if ( self.doDET == True ): # Do density embedding theory
                 if ( self.doDET_NO == True ): # Work in the NO basis
@@ -416,7 +421,7 @@ class dmet:
         jump = 0
         jumpc = 0
         for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
-            mf_1RDM = (OneRDM_loc[:,self.impClust[count]==1])[self.impClust[count]==1,:]
+            mf_1RDM = (OneRDM_loc[:,np.nonzero(self.impClust[count])])[np.nonzero(self.impClust[count]),:]
             ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
             theerror = mf_1RDM - ed_1RDM
             # squaresize = theerror.shape[0] * theerror.shape[1]
@@ -465,7 +470,7 @@ class dmet:
                                                                    jumpsquare : jumpsquare + self.imp_size[ count ] ]
                         jumpsquare += self.imp_size[ count ]
                     else:
-                        local_derivative = ((RDMderivs_rot[ countgr, :, : ])[:,self.impClust[count]==1])[self.impClust[count]==1,:]
+                        local_derivative = ((RDMderivs_rot[ countgr, :, : ])[:,np.nonzero(self.impClust[count])])[np.nonzero(self.impClust[count]),:]
                 if ( self.doDET == True ): # Do density embedding theory
                     local_derivative = np.diag( local_derivative )
                     error_deriv[ jump : jump + len( local_derivative ) ] = local_derivative

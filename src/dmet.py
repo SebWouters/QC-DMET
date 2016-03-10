@@ -417,7 +417,7 @@ class dmet:
                 mf_1RDM = np.dot( np.dot( self.dmetOrbs[ count ].T, OneRDM_loc ), self.dmetOrbs[ count ] )
                 ed_1RDM = self.imp_1RDM[count]
             else:
-                mf_1RDM = (OneRDM_loc[:,np.nonzero(self.impClust[count])])[np.nonzero(self.impClust[count]),:]
+                mf_1RDM = (OneRDM_loc[:,np.flatnonzero(self.impClust[count])])[np.flatnonzero(self.impClust[count]),:]
                 ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
             if ( self.doDET == True ): # Do density embedding theory
                 if ( self.doDET_NO == True ): # Work in the NO basis
@@ -457,7 +457,7 @@ class dmet:
         jump = 0
         jumpc = 0
         for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
-            mf_1RDM = (OneRDM_loc[:,np.nonzero(self.impClust[count])])[np.nonzero(self.impClust[count]),:]
+            mf_1RDM = (OneRDM_loc[:,np.flatnonzero(self.impClust[count])])[np.flatnonzero(self.impClust[count]),:]
             ed_1RDM = self.imp_1RDM[count][:self.imp_size[count],:self.imp_size[count]]
             theerror = mf_1RDM - ed_1RDM
             # squaresize = theerror.shape[0] * theerror.shape[1]
@@ -506,7 +506,7 @@ class dmet:
                                                                    jumpsquare : jumpsquare + self.imp_size[ count ] ]
                         jumpsquare += self.imp_size[ count ]
                     else:
-                        local_derivative = ((RDMderivs_rot[ countgr, :, : ])[:,np.nonzero(self.impClust[count])])[np.nonzero(self.impClust[count]),:]
+                        local_derivative = ((RDMderivs_rot[ countgr, :, : ])[:,np.flatnonzero(self.impClust[count])])[np.flatnonzero(self.impClust[count]),:]
                 if ( self.doDET == True ): # Do density embedding theory
                     local_derivative = np.diag( local_derivative )
                     error_deriv[ jump : jump + len( local_derivative ) ] = local_derivative

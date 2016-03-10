@@ -292,12 +292,48 @@ class dmet:
                 self.energy += 0.5 * np.einsum( 'ij,ij->', core1RDM_loc, totalOEI + totalFOCK )
                 Nelectrons = np.trace( self.imp_1RDM[ 0 ] ) + np.trace( core1RDM_loc ) # Because full active space is used to compute the energy
             else:
-                transfo = np.eye( self.Norb, dtype=float )
-                totalOEI  = self.ints.dmet_oei(  transfo, self.Norb )
-                totalFOCK = self.ints.dmet_fock( transfo, self.Norb, OneRDM )
-                self.energy += 0.5 * np.einsum( 'ij,ij->', OneRDM[remainingOrbs==1,:], \
-                         totalOEI[remainingOrbs==1,:] + totalFOCK[remainingOrbs==1,:] )
-                Nelectrons += np.trace( (OneRDM[remainingOrbs==1,:])[:,remainingOrbs==1] )
+                #transfo = np.eye( self.Norb, dtype=float )
+                #totalOEI  = self.ints.dmet_oei(  transfo, self.Norb )
+                #totalFOCK = self.ints.dmet_fock( transfo, self.Norb, OneRDM )
+                #self.energy += 0.5 * np.einsum( 'ij,ij->', OneRDM[remainingOrbs==1,:], \
+                #         totalOEI[remainingOrbs==1,:] + totalFOCK[remainingOrbs==1,:] )
+                #Nelectrons += np.trace( (OneRDM[remainingOrbs==1,:])[:,remainingOrbs==1] )
+
+                assert (np.array_equal(self.ints.active, np.ones([self.ints.mol.nao_nr()], dtype=int)))
+
+                from pyscf import scf
+                from types import MethodType
+                mol_ = self.ints.mol
+                mf_  = scf.RHF(mol_)
+
+                impOrbs = remainingOrbs==1
+                xorb = np.dot(mf_.get_ovlp(), self.ints.ao2loc)
+                hc  = -chempot_imp * np.dot(xorb[:,impOrbs], xorb[:,impOrbs].T)
+                dm0 = np.dot(self.ints.ao2loc, np.dot(OneRDM, self.ints.ao2loc.T))
+
+                def mf_hcore (self, mol=None):
+                    if mol is None: mol = self.mol
+                    return scf.hf.get_hcore(mol) + hc
+                mf_.get_hcore = MethodType(mf_hcore, mf_)
+                mf_.scf(dm0)
+                assert (mf_.converged)
+
+                rdm1 = mf_.make_rdm1()
+                jk   = mf_.get_veff(dm=rdm1)
+
+                xorb = np.dot(mf_.get_ovlp(), self.ints.ao2loc)
+                rdm1 = np.dot(xorb.T, np.dot(rdm1, xorb))
+                oei  = np.dot(self.ints.ao2loc.T, np.dot(mf_.get_hcore()-hc, self.ints.ao2loc))
+                jk   = np.dot(self.ints.ao2loc.T, np.dot(jk, self.ints.ao2loc))
+
+                ImpEnergy = \
+                   + 0.50 * np.einsum('ji,ij->', rdm1[:,impOrbs], oei[impOrbs,:]) \
+                   + 0.50 * np.einsum('ji,ij->', rdm1[impOrbs,:], oei[:,impOrbs]) \
+                   + 0.25 * np.einsum('ji,ij->', rdm1[:,impOrbs], jk[impOrbs,:]) \
+                   + 0.25 * np.einsum('ji,ij->', rdm1[impOrbs,:], jk[:,impOrbs])
+                self.energy += ImpEnergy
+                Nelectrons += np.trace(rdm1[np.ix_(impOrbs,impOrbs)])
+
             remainingOrbs[ remainingOrbs==1 ] -= 1
         assert( np.all( remainingOrbs == 0 ) )
             

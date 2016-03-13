@@ -74,7 +74,7 @@ if ( True ):
 
     for carbons_in_cluster in cluster_sizes:
         impurityClusters = []
-        if ( single_impurity == True ): # Do only 1 impurity at the edge
+        if ( casci_energy_formula ): # Do only 1 impurity at the edge
             num_orb_in_imp = np.sum( unit_sizes[ 0 : carbons_in_cluster ] )
             impurity_orbitals = np.zeros( [ mol.nao_nr() ], dtype=int )
             impurity_orbitals[ 0 : num_orb_in_imp ] = 1
@@ -86,7 +86,10 @@ if ( True ):
                 num_carb_in_imp = min( carbons_in_cluster, len( unit_sizes ) - atoms_passed )
                 num_orb_in_imp = np.sum( unit_sizes[ atoms_passed : atoms_passed + num_carb_in_imp ] )
                 impurity_orbitals = np.zeros( [ mol.nao_nr() ], dtype=int )
-                impurity_orbitals[ jump : jump + num_orb_in_imp ] = 1
+                if ( single_impurity and atoms_passed > 0 ):
+                    impurity_orbitals[ jump : jump + num_orb_in_imp ] = -1
+                else:
+                    impurity_orbitals[ jump : jump + num_orb_in_imp ] = 1
                 impurityClusters.append( impurity_orbitals )
                 atoms_passed += num_carb_in_imp
                 jump += num_orb_in_imp

@@ -16,7 +16,7 @@
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
-
+#importing required libraries
 import localintegrals
 import qcdmethelper
 import numpy as np
@@ -493,7 +493,7 @@ class dmet:
                     thesize += self.imp_size[ count ] * self.imp_size[ count ]
         
         gradient = []
-        for countgr in range( len( newumatflat ) ):
+        for countgr in range( len( newumatflat ) ):          #range will be 0 to one less than newumatflat (stop value),with step value one
             error_deriv = np.zeros( [ thesize ], dtype=float )
             jump = 0
             jumpsquare = 0

@@ -19,14 +19,14 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet, qcdmet_paths
+import local_integrals, dmet, qcdmet_paths
 from pyscf import gto, scf, ao2mo
 import numpy as np
 
 DMguess  = None
 #old_umat = None
 
-bondlengths = np.arange(0.6, 3.05, 0.1)
+bondlengths = np.array([0.7, 1.0])
 #bondlengths = np.arange(0.6, 3.05, 0.1)[::-1]
 energies = []
 
@@ -54,10 +54,10 @@ for bondlength in bondlengths:
         TEI   = ao2mo.outcore.full_iofree(mol, mf.mo_coeff, compact=False).reshape(mol.nao_nr(), mol.nao_nr(), mol.nao_nr(), mol.nao_nr())
         import chemps2
         Energy, OneDM = chemps2.solve( ENUCL, OEI, OEI, TEI, mol.nao_nr(), mol.nelectron, mol.nao_nr(), 0.0, False )
-        print "bl =", bondlength," and energy =", Energy
+        print("bl =", bondlength," and energy =", Energy)
         
     else:
-        myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
+        myInts = local_integrals.localintegrals( mf, list(range( mol.nao_nr())), 'meta_lowdin' )
         myInts.molden( 'hydrogen-loc.molden' )
         myInts.TI_OK = True # Only s functions
 
@@ -66,24 +66,35 @@ for bondlength in bondlengths:
         orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 
         impurityClusters = []
-        for cluster in range( nat / atoms_per_imp ):
+        for cluster in range( nat // atoms_per_imp ):
             impurities = np.zeros( [ myInts.Norbs ], dtype=int )
-            for orb in range( orbs_per_imp ):
-                impurities[ orbs_per_imp*cluster + orb ] = 1
+            for orb in range( int(orbs_per_imp) ):
+                impurities[ int(orbs_per_imp)*cluster + orb ] = 1
             impurityClusters.append( impurities )
         isTranslationInvariant = True # OK because only s-functions and meta-lowdin
-        method = 'ED'
+        print("Start FCI DMET")
         SCmethod = 'LSTSQ' #Don't do it self-consistently
-        theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, method, SCmethod )
+        dmetFCI = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, 'FCI', SCmethod )
+        dmetFCI.doDET = False
+        e_fci = dmetFCI.doselfconsistent()
+        print("FCI DMET Energy =", e_fci)
+
+        print("\nStart DMRG DMET")
+        dmetDMRG = dmet.dmet( myInts, impurityClusters, isTranslationInvariant, 'DMRG', SCmethod )
+        dmetDMRG.doDET = False
+        e_dmrg = dmetDMRG.doselfconsistent()
+        print("DMRG DMET Energy =", e_dmrg)
+
+        print( "\nDifference between FCI and DMRG: %e" % abs(e_fci - e_dmrg) )
         #if ( old_umat != None ):
         #    theDMET.umat = np.array( old_umat, copy=True )
-        Energy = theDMET.doselfconsistent()
+        Energy = e_fci
         #old_umat = np.array( theDMET.umat, copy=True )
-        print "bl =", bondlength," and energy =", Energy
+        print("bl =", bondlength," and energy =", Energy)
         energies.append(Energy)
         #theDMET.dump_bath_orbs( 'hydrogen-bath.molden' )
         #DMguess = np.dot( np.dot( myInts.ao2loc, theDMET.onedm_solution_rhf() ), myInts.ao2loc.T )
 
-print "Bondlengths =", bondlengths
-print "Energies =", energies
+print("Bondlengths =", bondlengths)
+print("Energies =", energies)
 

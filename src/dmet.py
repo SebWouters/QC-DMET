@@ -17,8 +17,8 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
 
-import localintegrals
-import qcdmethelper
+import local_integrals
+import qcdmet_helper
 import numpy as np
 from scipy import optimize
 import time
@@ -30,7 +30,7 @@ class dmet:
         if ( isTranslationInvariant == True ):
             assert( theInts.TI_OK == True )
         
-        assert (( method == 'ED' ) or ( method == 'CC' ) or ( method == 'MP2' ))
+        assert (( method == 'ED' ) or ( method == 'FCI' ) or ( method == 'DMRG' ) or ( method == 'DMRG-CheMPS2' ) or ( method == 'CC' ) or ( method == 'MP2' ) or ( method == 'RHF' ))
         assert (( SCmethod == 'LSTSQ' ) or ( SCmethod == 'BFGS' ) or ( SCmethod == 'NONE' ))
         
         self.ints       = theInts
@@ -83,7 +83,7 @@ class dmet:
         self.imp_size = self.make_imp_size()
         self.mu_imp   = 0.0
         self.mask     = self.make_mask()
-        self.helper   = qcdmethelper.qcdmethelper( self.ints, self.makelist_H1(), self.altcostfunc, self.minFunc )
+        self.helper   = qcdmet_helper.qcdmethelper( self.ints, self.makelist_H1(), self.altcostfunc, self.minFunc )
         
         self.time_ed  = 0.0
         self.time_cf  = 0.0
@@ -123,7 +123,7 @@ class dmet:
                 localsize = self.imp_size[ 0 ]
                 for row in range( localsize ):
                     H1 = np.zeros( [ self.Norb, self.Norb ], dtype=int )
-                    for jumper in range( self.Norb / localsize ):
+                    for jumper in range( self.Norb // localsize ):
                         jumpsquare = localsize * jumper
                         H1[ jumpsquare + row, jumpsquare + row ] = 1
                     theH1.append( H1 )
@@ -141,7 +141,7 @@ class dmet:
                 for row in range( localsize ):
                     for col in range( row, localsize ):
                         H1 = np.zeros( [ self.Norb, self.Norb ], dtype=int )
-                        for jumper in range( self.Norb / localsize ):
+                        for jumper in range( self.Norb // localsize ):
                             jumpsquare = localsize * jumper
                             H1[ jumpsquare + row, jumpsquare + col ] = 1
                             H1[ jumpsquare + col, jumpsquare + row ] = 1
@@ -212,7 +212,7 @@ class dmet:
                 elif ( core1RDM_dmet[ cnt ] > 2.0 - core_cutoff ):
                     core1RDM_dmet[ cnt ] = 2.0
                 else:
-                    print "Bad DMET bath orbital selection: trying to put a bath orbital with occupation", core1RDM_dmet[ cnt ], "into the environment :-(."
+                    print("Bad DMET bath orbital selection: trying to put a bath orbital with occupation", core1RDM_dmet[ cnt ], "into the environment :-(.")
                     assert( 0 == 1 )
 
             Norb_in_imp  = numImpOrbs + numBathOrbs
@@ -236,24 +236,30 @@ class dmet:
                 dmetOEI += umat_rotated[:Norb_in_imp,:Norb_in_imp]
                 dmetFOCK = np.array( dmetOEI, copy=True )
             
-            print "DMET::exact : Performing a (", Norb_in_imp, "orb,", Nelec_in_imp, "el ) DMET active space calculation."
+            print("DMET::exact : Performing a (", Norb_in_imp, "orb,", Nelec_in_imp, "el ) DMET active space calculation.")
             if ( flag_rhf ):
-                import pyscf_rhf
-                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = pyscf_rhf.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
-            elif ( self.method == 'ED' ):
-                import chemps2
+                from solvers import rhf
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp// 2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = rhf.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
+            elif ( self.method == 'ED' ) or ( self.method == 'FCI' ):
+                from solvers import fci
+                IMP_energy, IMP_1RDM = fci.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, chempot_imp )
+            elif ( self.method == 'DMRG' ):
+                from solvers import block2
+                IMP_energy, IMP_1RDM = block2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, chempot_imp )
+            elif ( self.method == 'DMRG-CheMPS2' ):
+                from solvers import chemps2
                 IMP_energy, IMP_1RDM = chemps2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, chempot_imp )
             elif ( self.method == 'CC' ):
-                import pyscf_cc
+                from solvers import cc
                 assert( Nelec_in_imp % 2 == 0 )
-                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = pyscf_cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, self.CC_E_TYPE, chempot_imp )
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp// 2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = cc.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, self.CC_E_TYPE, chempot_imp )
             elif ( self.method == 'MP2' ):
-                import pyscf_mp2
+                from solvers import mp2
                 assert( Nelec_in_imp % 2 == 0 )
-                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp/2, numImpOrbs, chempot_imp )
-                IMP_energy, IMP_1RDM = pyscf_mp2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
+                DMguessRHF = self.ints.dmet_init_guess_rhf( loc2dmet, Norb_in_imp, Nelec_in_imp// 2, numImpOrbs, chempot_imp )
+                IMP_energy, IMP_1RDM = mp2.solve( 0.0, dmetOEI, dmetFOCK, dmetTEI, Norb_in_imp, Nelec_in_imp, numImpOrbs, DMguessRHF, chempot_imp )
             self.energy += IMP_energy
             self.imp_1RDM.append( IMP_1RDM )
             if ( self.doDET == True ) and ( self.doDET_NO == True ):
@@ -351,7 +357,7 @@ class dmet:
             myNOrotation[ count, count ] = 1.0
         if ( self.TransInv == True ):
             size = self.imp_size[ 0 ]
-            for it in range( 1, self.Norb / size ):
+            for it in range( 1, self.Norb // size ):
                 myNOrotation[ it*size:(it+1)*size, it*size:(it+1)*size ] = myNOrotation[ 0:size, 0:size ]
         '''if True:
             assert ( np.linalg.norm( np.dot( myNOrotation.T, myNOrotation ) - np.eye( self.umat.shape[0] ) ) < 1e-10 )
@@ -449,7 +455,7 @@ class dmet:
         jump = 0
         for count in range(len(self.imp_size)):
             # thesize += self.imp_size[ count ] * self.imp_size[ count ]
-            mask_t = self.mask[ np.ix_(range(jump,jump+self.imp_size[count]),range(jump,jump+self.imp_size[count])) ]
+            mask_t = self.mask[ np.ix_(list(range(jump,jump+self.imp_size[count])),list(range(jump,jump+self.imp_size[count]))) ]
             thesize += np.count_nonzero( mask_t )
             jump += self.imp_size[count]
         errors = np.zeros( [ thesize ], dtype=float )
@@ -462,7 +468,7 @@ class dmet:
             theerror = mf_1RDM - ed_1RDM
             # squaresize = theerror.shape[0] * theerror.shape[1]
             # errors[ jump : jump + squaresize ] = np.reshape( theerror, squaresize, order='F' )
-            mask_t = self.mask[ np.ix_(range(jumpc,jumpc+self.imp_size[count]),range(jumpc,jumpc+self.imp_size[count])) ]
+            mask_t = self.mask[ np.ix_(list(range(jumpc,jumpc+self.imp_size[count])),list(range(jumpc,jumpc+self.imp_size[count]))) ]
             squaresize = np.count_nonzero( mask_t )
             errors[ jump : jump + squaresize ] = np.reshape( theerror[mask_t], squaresize, order='F' )
             jump  += squaresize
@@ -535,8 +541,8 @@ class dmet:
             umatbis[cnt] += stepsize
             costbis = self.costfunction( umatbis )
             gradientbis[ cnt ] = ( costbis - cost_reference ) / stepsize
-        print "   Norm( gradient difference ) =", np.linalg.norm( gradient - gradientbis )
-        print "   Norm( gradient )            =", np.linalg.norm( gradient )
+        print("   Norm( gradient difference ) =", np.linalg.norm( gradient - gradientbis ))
+        print("   Norm( gradient )            =", np.linalg.norm( gradient ))
         
     def hessian_eigenvalues( self, umatflat ):
     
@@ -553,7 +559,7 @@ class dmet:
         idx = eigvals.argsort()
         eigvals = eigvals[ idx ]
         eigvecs = eigvecs[ :, idx ]
-        print "Hessian eigenvalues =", eigvals
+        print("Hessian eigenvalues =", eigvals)
         #print "Hessian 1st eigenvector =",eigvecs[:,0]
         #print "Hessian 2nd eigenvector =",eigvecs[:,1]
         
@@ -565,7 +571,7 @@ class dmet:
         umatsquare[ self.mask ] = umatflat
         if ( self.TransInv == True ):
             size = self.imp_size[ 0 ]
-            for it in range( 1, self.Norb / size ):
+            for it in range( 1, self.Norb // size ):
                 umatsquare[ it*size:(it+1)*size, it*size:(it+1)*size ] = umatsquare[ 0:size, 0:size ]
                 
         '''if True:
@@ -590,7 +596,7 @@ class dmet:
         
         Nelec_dmet   = self.doexact( chempot_imp )
         Nelec_target = self.ints.Nelec
-        print "      (chemical potential , number of electrons) = (", chempot_imp, "," , Nelec_dmet ,")"
+        print("      (chemical potential , number of electrons) = (", chempot_imp, "," , Nelec_dmet ,")")
         return Nelec_dmet - Nelec_target
 
     def doselfconsistent( self ):
@@ -598,12 +604,12 @@ class dmet:
         iteration = 0
         u_diff = 1.0
         convergence_threshold = 1e-5
-        print "RHF energy =", self.ints.fullEhf
+        print("RHF energy =", self.ints.fullEhf)
         
         while ( u_diff > convergence_threshold ):
         
             iteration += 1
-            print "DMET iteration", iteration
+            print("DMET iteration", iteration)
             umat_old = np.array( self.umat, copy=True )
             rdm_old = self.transform_ed_1rdm() # At the very first iteration, this matrix will be zero
             
@@ -612,12 +618,15 @@ class dmet:
             if (( self.method == 'CC' ) and ( self.CC_E_TYPE == 'CASCI' )):
                 self.mu_imp = 0.0
                 self.doexact( self.mu_imp )
-            else:
+            try:
                 self.mu_imp = optimize.newton( self.numeleccostfunction, self.mu_imp )
-                print "   Chemical potential =", self.mu_imp
+            except RuntimeError as e:
+                print("Warning: newton solver for chemical potential did not perfectly converge. Proceeding with last evaluated chemical potential.")
+                pass
+                print("   Chemical potential =", self.mu_imp)
             stop_ed = time.time()
             self.time_ed += ( stop_ed - start_ed )
-            print "   Energy =", self.energy
+            print("   Energy =", self.energy)
             # self.verify_gradient( self.square2flat( self.umat ) ) # Only works for self.doSCF == False!!
             if ( self.SCmethod != 'NONE' and not(self.altcostfunc) ):
                 self.hessian_eigenvalues( self.square2flat( self.umat ) )
@@ -635,9 +644,9 @@ class dmet:
                 self.umat = self.flat2square( result.x )
             self.umat = self.umat - np.eye( self.umat.shape[ 0 ] ) * np.average( np.diag( self.umat ) ) # Remove arbitrary chemical potential shifts
             if ( self.altcostfunc ):
-                print "   Cost function after convergence =", self.alt_costfunction( self.square2flat( self.umat ) )
+                print("   Cost function after convergence =", self.alt_costfunction( self.square2flat( self.umat ) ))
             else:
-                print "   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) )
+                print("   Cost function after convergence =", self.costfunction( self.square2flat( self.umat ) ))
             stop_cf = time.time()
             self.time_cf += ( stop_cf - start_cf )
             
@@ -651,33 +660,33 @@ class dmet:
             u_diff   = np.linalg.norm( umat_old - self.umat )
             rdm_diff = np.linalg.norm( rdm_old - self.transform_ed_1rdm() )
             self.umat = self.relaxation * umat_old + ( 1.0 - self.relaxation ) * self.umat
-            print "   2-norm of difference old and new u-mat =", u_diff
-            print "   2-norm of difference old and new 1-RDM =", rdm_diff
-            print "******************************************************"
+            print("   2-norm of difference old and new u-mat =", u_diff)
+            print("   2-norm of difference old and new 1-RDM =", rdm_diff)
+            print("******************************************************")
             
             if ( self.SCmethod == 'NONE' ):
                 u_diff = 0.1 * convergence_threshold # Do only 1 iteration
         
-        print "Time cf func =", self.time_func
-        print "Time cf grad =", self.time_grad
-        print "Time dmet ed =", self.time_ed
-        print "Time dmet cf =", self.time_cf
+        print("Time cf func =", self.time_func)
+        print("Time cf grad =", self.time_grad)
+        print("Time dmet ed =", self.time_ed)
+        print("Time dmet cf =", self.time_cf)
         
         return self.energy
         
     def print_umat( self ):
     
-        print "The u-matrix ="
+        print("The u-matrix =")
         squarejumper = 0
         for localsize in self.imp_size: # self.imp_size has length 1 if self.TransInv
-            print self.umat[ squarejumper:squarejumper+localsize , squarejumper:squarejumper+localsize ]
+            print(self.umat[ squarejumper:squarejumper+localsize , squarejumper:squarejumper+localsize ])
             squarejumper += localsize
     
     def print_1rdm( self ):
     
-        print "The ED 1-RDM of the impurities ( + baths ) ="
+        print("The ED 1-RDM of the impurities ( + baths ) =")
         for count in range( len( self.imp_size ) ): # self.imp_size has length 1 if self.TransInv
-            print self.imp_1RDM[ count ]
+            print(self.imp_1RDM[ count ])
             
     def transform_ed_1rdm( self ):
     

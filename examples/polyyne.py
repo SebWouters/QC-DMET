@@ -19,8 +19,8 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet, qcdmet_paths
-from pyscf import gto, scf, future, mp
+import local_integrals, dmet, qcdmet_paths
+from pyscf import gto, scf, mp
 from pyscf.cc import ccsd
 import numpy as np
 
@@ -41,7 +41,7 @@ for alpha in np.arange(0.88, 1.13, 0.02):
     mol.atom = []
 
     angle = 0.0
-    for i in range( nat / 2 ):
+    for i in range( nat // 2 ):
         mol.atom.append(('C', (R * np.cos(angle        ), R * np.sin(angle        ), 0.0)))
         mol.atom.append(('C', (R * np.cos(angle + shift), R * np.sin(angle + shift), 0.0)))
         angle += 4.0 * np.pi / nat
@@ -58,16 +58,16 @@ for alpha in np.arange(0.88, 1.13, 0.02):
         ccsolver = ccsd.CCSD( mf )
         ccsolver.verbose = 5
         ECORR, t1, t2 = ccsolver.ccsd()
-        ECCSD = mf.hf_energy + ECORR
-        print "ECCSD for alpha ",alpha," =", ECCSD
+        ECCSD = mf.e_tot + ECORR
+        print("ECCSD for alpha ",alpha," =", ECCSD)
         
     if ( False ):
         mp2solver = mp.MP2( mf )
         ECORR, t_mp2 = mp2solver.kernel()
-        EMP2 = mf.hf_energy + ECORR
-        print "EMP2 for alpha ",alpha," =", EMP2
+        EMP2 = mf.e_tot + ECORR
+        print("EMP2 for alpha ",alpha," =", EMP2)
     
-    myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
+    myInts = local_integrals.localintegrals( mf, list(range( mol.nao_nr())), 'meta_lowdin' )
     myInts.molden( 'polyyne-loc.molden' )
 
     atoms_per_imp = 4 # Impurity size counted in number of atoms
@@ -75,10 +75,10 @@ for alpha in np.arange(0.88, 1.13, 0.02):
     orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 
     impurityClusters = []
-    for cluster in range( nat / atoms_per_imp ):
+    for cluster in range( nat // atoms_per_imp ):
         impurities = np.zeros( [ myInts.Norbs ], dtype=int )
-        for orb in range( orbs_per_imp ):
-            impurities[ orbs_per_imp*cluster + orb ] = 1
+        for orb in range( int(orbs_per_imp) ):
+            impurities[ int(orbs_per_imp)*cluster + orb ] = 1
         impurityClusters.append( impurities )
     isTranslationInvariant = False # Both in meta_lowdin (due to px, py) and Boys TI is not OK
     method = 'CC'

@@ -60,8 +60,8 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, chempot_imp=0.0, printoutput=
     
         # FCI ground state calculation
         assert( Nel % 2 == 0 )
-        Nel_up       = Nel / 2
-        Nel_down     = Nel / 2
+        Nel_up       = Nel // 2
+        Nel_down     = Nel // 2
         Irrep        = 0
         maxMemWorkMB = 100.0
         FCIverbose   = 2

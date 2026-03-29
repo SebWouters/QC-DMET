@@ -19,7 +19,7 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals_hubbard, dmet, qcdmet_paths
+import local_integrals_hubbard, dmet, qcdmet_paths
 import numpy as np
 
 HubbardU   = 1.0
@@ -40,10 +40,10 @@ for Nelectrons in range( 12, 241, 12 ):
    hopping[ 0, Norbs-1 ] = 1.0 # anti-PBC
    hopping[ Norbs-1, 0 ] = 1.0 # anti-PBC
 
-   myInts = localintegrals_hubbard.localintegrals_hubbard( hopping, HubbardU, Nelectrons )
+   myInts = local_integrals_hubbard.localintegrals_hubbard( hopping, HubbardU, Nelectrons )
 
    impurityClusters = []
-   for cluster in range( Norbs / imp_size ):
+   for cluster in range( Norbs // imp_size ):
        impurities = np.zeros( [ myInts.Norbs ], dtype=int )
        for orb in range( cluster*imp_size, (cluster+1)*imp_size ):
            impurities[ orb ] = 1
@@ -67,10 +67,10 @@ for Nelectrons in range( 12, 241, 12 ):
    energies.append( theEnergy / Norbs )
 
 np.set_printoptions(precision=8, linewidth=160)
-print "For U =", HubbardU,"and Norbs =", Norbs
-print "Fillings ="
-print np.array( fillings )
-print "E / site ="
-print np.array( energies )
+print("For U =", HubbardU,"and Norbs =", Norbs)
+print("Fillings =")
+print(np.array( fillings ))
+print("E / site =")
+print(np.array( energies ))
 
 

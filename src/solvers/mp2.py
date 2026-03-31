@@ -20,7 +20,7 @@
 import numpy as np
 import ctypes
 import rhf
-import localintegrals
+import local_integrals
 import os  # for dev/null
 import sys # for sys.stdout
 import qcdmet_paths
@@ -57,8 +57,8 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, 
     DMrhf = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )
     Erhf  = CONST + np.einsum('ij,ij->', FOCKcopy, DMrhf)
     Erhf += 0.5 * np.einsum('ijkl,ij,kl->', TEI, DMrhf, DMrhf) - 0.25 * np.einsum('ijkl,ik,jl->', TEI, DMrhf, DMrhf)
-    numPairs = Nel / 2
-    print "pyscf_mp2::solve : RHF homo-lumo gap =", mf.mo_energy[numPairs] - mf.mo_energy[numPairs-1]
+    numPairs = Nel // 2
+    print("mp2::solve : RHF homo-lumo gap =", mf.mo_energy[numPairs] - mf.mo_energy[numPairs-1])
     
     # Get the MP2 solution
     myMP2 = mp.MP2( mf )
@@ -81,8 +81,8 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, chempot_imp=0.0, 
     TwoRDM_loc = np.einsum('ck,abkl->abcl', mf.mo_coeff, TwoRDM_loc)
     TwoRDM_loc = np.einsum('dl,abcl->abcd', mf.mo_coeff, TwoRDM_loc)
     Etotal2 = Erhf - 0.5 * np.einsum('ijkl,ij,kl->', TEI, DMrhf, DMrhf) + 0.25 * np.einsum('ijkl,ik,jl->', TEI, DMrhf, DMrhf) + 0.5 * np.einsum('ijkl,ijkl->', TEI, TwoRDM_loc)
-    print "Etotal  =", Etotal
-    print "Etotal2 =", Etotal2
+    print("Etotal  =", Etotal)
+    print("Etotal2 =", Etotal2)
     
     # Reviving output if necessary
     if ( printoutput==False ):

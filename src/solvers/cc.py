@@ -24,7 +24,6 @@ import sys # for sys.stdout
 import qcdmet_paths
 from pyscf import ao2mo, gto, scf
 from pyscf.cc import ccsd
-from pyscf.tools import rhf_newtonraphson
 
 def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBDA', chempot_imp=0.0, printoutput=True ):
 
@@ -58,26 +57,27 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBD
     mf.scf( DMguessRHF )
     DMloc = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )
     if ( mf.converged == False ):
-        mf = rhf_newtonraphson.solve( mf, dm_guess=DMloc )
+        mf = mf.newton()
+        mf.scf( DMloc )
         DMloc = np.dot(np.dot( mf.mo_coeff, np.diag( mf.mo_occ )), mf.mo_coeff.T )
     
     # Check the RHF solution
     assert( Nel % 2 == 0 )
-    numPairs = Nel / 2
+    numPairs = Nel // 2
     FOCKloc = FOCKcopy + np.einsum('ijkl,ij->kl', TEI, DMloc) - 0.5 * np.einsum('ijkl,ik->jl', TEI, DMloc)
     eigvals, eigvecs = np.linalg.eigh( FOCKloc )
     idx = eigvals.argsort()
     eigvals = eigvals[ idx ]
     eigvecs = eigvecs[ :, idx ]
-    print "psi4cc::solve : RHF homo-lumo gap =", eigvals[numPairs] - eigvals[numPairs-1]
+    print("psi4cc::solve : RHF homo-lumo gap =", eigvals[numPairs] - eigvals[numPairs-1])
     DMloc2  = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
-    print "Two-norm difference of 1-RDM(RHF) and 1-RDM(FOCK(RHF)) =", np.linalg.norm(DMloc - DMloc2)
+    print("Two-norm difference of 1-RDM(RHF) and 1-RDM(FOCK(RHF)) =", np.linalg.norm(DMloc - DMloc2))
     
     # Get the CC solution from pyscf
     ccsolver = ccsd.CCSD( mf )
     ccsolver.verbose = 5
     ECORR, t1, t2 = ccsolver.ccsd()
-    ERHF = mf.hf_energy
+    ERHF = mf.e_tot
     ECCSD = ERHF + ECORR
     
     # Compute the impurity energy
@@ -85,7 +85,7 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBD
     
         # The 2-RDM is not required
         # Active space energy is computed with the Fock operator of the core (not rescaled)
-        print "ECCSD =", ECCSD
+        print("ECCSD =", ECCSD)
         ccsolver.solve_lambda()
         pyscfRDM1 = ccsolver.make_rdm1()                                  # MO space
         pyscfRDM1 = 0.5 * (pyscfRDM1 + pyscfRDM1.T)                       # Symmetrize
@@ -112,23 +112,16 @@ def solve( CONST, OEI, FOCK, TEI, Norb, Nel, Nimp, DMguessRHF, energytype='LAMBD
             fake_l2 = np.zeros( t2.shape, dtype=float )
             pyscfRDM1 = ccsolver.make_rdm1(t1, t2, fake_l1, fake_l2) # MO space
             pyscfRDM2 = ccsolver.make_rdm2(t1, t2, fake_l1, fake_l2) # MO space
-        pyscfRDM1 = 0.5 * ( pyscfRDM1 + pyscfRDM1.T ) # Symmetrize
+        pyscfRDM1 = 0.5 * ( pyscfRDM1 + pyscfRDM1.T )
         
-        # Print a few to things to double check
-        '''
-        print "Do we understand how the 1-RDM is stored?", np.linalg.norm( np.einsum('ii->',     pyscfRDM1) - Nel )
-        print "Do we understand how the 2-RDM is stored?", np.linalg.norm( np.einsum('ijkk->ij', pyscfRDM2) / (Nel - 1.0) - pyscfRDM1 )
-        '''
-        
-        # Change the pyscfRDM1/2 from MO space to localized space
         pyscfRDM1 = np.dot(mf.mo_coeff, np.dot(pyscfRDM1, mf.mo_coeff.T ))
         pyscfRDM2 = np.einsum('ai,ijkl->ajkl', mf.mo_coeff, pyscfRDM2)
         pyscfRDM2 = np.einsum('bj,ajkl->abkl', mf.mo_coeff, pyscfRDM2)
         pyscfRDM2 = np.einsum('ck,abkl->abcl', mf.mo_coeff, pyscfRDM2)
         pyscfRDM2 = np.einsum('dl,abcl->abcd', mf.mo_coeff, pyscfRDM2)
         ECCSDbis = CONST + np.einsum('ij,ij->', FOCKcopy, pyscfRDM1) + 0.5 * np.einsum('ijkl,ijkl->', TEI, pyscfRDM2)
-        print "ECCSD1 =", ECCSD
-        print "ECCSD2 =", ECCSDbis
+        print("ECCSD1 =", ECCSD)
+        print("ECCSD2 =", ECCSDbis)
         
         # To calculate the impurity energy, rescale the JK matrix with a factor 0.5 to avoid double counting: 0.5 * ( OEI + FOCK ) = OEI + 0.5 * JK
         ImpurityEnergy = CONST \

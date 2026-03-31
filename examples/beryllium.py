@@ -19,8 +19,8 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet, ringhelper, qcdmet_paths
-from pyscf import gto, scf, future
+import local_integrals, dmet, ring_helper, qcdmet_paths
+from pyscf import gto, scf
 from pyscf.cc import ccsd
 import numpy as np
 
@@ -34,7 +34,7 @@ if ( casenumber == 2 ):
 if ( casenumber == 3 ):
     thecases = np.arange( 2.4, 1.78, -0.1 )
     
-print "Bond lengths (Angstrom) =", thecases
+print("Bond lengths (Angstrom) =", thecases)
 
 DMguess = None
 for bl in thecases:
@@ -61,8 +61,8 @@ for bl in thecases:
         ccsolver = ccsd.CCSD( mf )
         ccsolver.verbose = 5
         ECORR, t1, t2 = ccsolver.ccsd()
-        ECCSD = mf.hf_energy + ECORR
-        print "ECCSD for bondlength ",bl," =", ECCSD
+        ECCSD = mf.e_tot + ECORR
+        print("ECCSD for bondlength ",bl," =", ECCSD)
 
     #elif ( bl < 3.35 ):
     else:
@@ -76,22 +76,22 @@ for bl in thecases:
             theta  = i * (2*np.pi/nat)
             offset = 5 * i # 5 basisfunctions in sto-6g
             # Order of AO: 3s 2p 1d
-            rotation[ offset+2:offset+5,  offset+2:offset+5  ] = ringhelper.p_functions( theta )
+            rotation[ offset+2:offset+5,  offset+2:offset+5  ] = ring_helper.p_functions( theta )
         assert( np.linalg.norm( np.dot( rotation, rotation.T ) - np.eye( rotation.shape[0] ) ) < 1e-6 )
-        myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), localization_type, rotation )
+        myInts = local_integrals.localintegrals( mf, list(range( mol.nao_nr())), localization_type, rotation )
         if (( localization_type == 'meta_lowdin' ) or ( localization_type == 'iao' )):
             myInts.TI_OK = True
         myInts.molden( 'Be-loc.molden' )
 
-        atoms_per_imp = 1 # Impurity size = 1/2/3/5/6 Be atoms
+        atoms_per_imp = 1
         assert ( nat % atoms_per_imp == 0 )
         orbs_per_imp = myInts.Norbs * atoms_per_imp / nat
 
         impurityClusters = []
-        for cluster in range( nat / atoms_per_imp ):
+        for cluster in range( nat // atoms_per_imp ):
             impurities = np.zeros( [ myInts.Norbs ], dtype=int )
-            for orb in range( orbs_per_imp ):
-                impurities[ orbs_per_imp*cluster + orb ] = 1
+            for orb in range( int(orbs_per_imp) ):
+                impurities[ int(orbs_per_imp)*cluster + orb ] = 1
             impurityClusters.append( impurities )
         if (( localization_type == 'meta_lowdin' ) or ( localization_type == 'iao' )):
             isTranslationInvariant = True

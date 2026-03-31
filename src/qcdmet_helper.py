@@ -17,7 +17,7 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 '''
 
-import localintegrals
+import local_integrals
 import rhf
 import numpy as np
 import ctypes
@@ -29,7 +29,7 @@ class qcdmethelper:
     
         self.locints = theLocalIntegrals
         assert( self.locints.Nelec % 2 == 0 )
-        self.numPairs = self.locints.Nelec / 2
+        self.numPairs = self.locints.Nelec // 2
         self.altcf = altcf
         self.minFunc = None
 
@@ -138,7 +138,7 @@ class qcdmethelper:
         idx = np.maximum( -eigenvals, eigenvals - 2.0 ).argsort() # Occupation numbers closest to 1 come first
         tokeep = np.sum( -np.maximum( -eigenvals, eigenvals - 2.0 )[idx] > threshold )
         if ( tokeep < numBathOrbs ):
-            print "DMET::constructbath : Throwing out", numBathOrbs - tokeep, "orbitals which are within", threshold, "of 0 or 2."
+            print("DMET::constructbath : Throwing out", numBathOrbs - tokeep, "orbitals which are within", threshold, "of 0 or 2.")
         numBathOrbs = min(np.sum( tokeep ), numBathOrbs)
         eigenvals = eigenvals[idx]
         eigenvecs = eigenvecs[:,idx]

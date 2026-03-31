@@ -34,7 +34,7 @@ class localintegrals_hubbard:
         eigvals = eigvals[ idx ]
         eigvecs = eigvecs[ :, idx ]
         assert( Nelectrons % 2 == 0 )
-        numPairs = Nelectrons / 2
+        numPairs = Nelectrons // 2
         assert( eigvals[ numPairs ] - eigvals[ numPairs-1 ] > 1e-8 )
         #print "SP gap localint =", eigvals[ numPairs ] - eigvals[ numPairs-1 ]
         
@@ -49,7 +49,7 @@ class localintegrals_hubbard:
         self.fullEhf    = np.einsum( 'ij,ij->', self.activeOEI + 0.5 * self.origJKloc, self.origDMloc )
         self.activeFOCK = self.activeOEI + self.origJKloc
         
-        print "Hubbard RHF energy =", self.fullEhf
+        print("Hubbard RHF energy =", self.fullEhf)
         
         self.activeERI = np.zeros( [self.Norbs, self.Norbs, self.Norbs, self.Norbs], dtype=float)
         for orb in range( self.Norbs ):

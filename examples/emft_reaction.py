@@ -19,8 +19,8 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet, qcdmet_paths
-from pyscf import gto, scf, symm, future
+import local_integrals, dmet, qcdmet_paths
+from pyscf import gto, scf, symm
 from pyscf.cc import ccsd
 import numpy as np
 
@@ -162,16 +162,16 @@ mf2.scf()
 ccsolver2 = ccsd.CCSD( mf2 )
 ccsolver2.verbose = 5
 ECORR2, t1, t2 = ccsolver2.ccsd()
-ERHF2 = mf2.hf_energy
+ERHF2 = mf2.e_tot
 ECCSD2 = ERHF2 + ECORR2
 
 if ( False ):
     ccsolver1 = ccsd.CCSD( mf1 )
     ccsolver1.verbose = 5
     ECORR1, t1, t2 = ccsolver1.ccsd()
-    ECCSD1 = mf1.hf_energy + ECORR1
-    print "ERHF  for structure", thestructure, "=", mf1.hf_energy + ERHF2
-    print "ECCSD for structure", thestructure, "=", ECCSD1 + ECCSD2
+    ECCSD1 = mf1.e_tot + ECORR1
+    print("ERHF  for structure", thestructure, "=", mf1.e_tot + ERHF2)
+    print("ECCSD for structure", thestructure, "=", ECCSD1 + ECCSD2)
     # ERHF  (reactants) = -925.856396874
     # ECCSD (reactants) = -927.858808954
     # ERHF  (products)  = -925.964797448
@@ -182,7 +182,7 @@ if ( False ):
 ############
 
 if ( True ):
-    myInts = localintegrals.localintegrals( mf2, range( mol2.nao_nr() ), 'iao' )
+    myInts = local_integrals.localintegrals( mf2, list(range( mol2.nao_nr())), 'iao' )
     myInts.molden( 'emft-loc.molden' )
     
     unit_sizes = None
@@ -203,6 +203,6 @@ if ( True ):
         theDMET = dmet.dmet( myInts, impurityClusters, isTranslationInvariant=False, method='CC', SCmethod='NONE' )
         theDMET.CC_E_TYPE = 'CASCI'
         the_energy = theDMET.doselfconsistent()
-        print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy + ECCSD2
+        print("######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy + ECCSD2)
 
     

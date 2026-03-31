@@ -18,10 +18,9 @@
 '''
 
 import qcdmet_paths
-from pyscf import gto, scf, ao2mo, tools, future
-from pyscf.future import lo
-from pyscf.future.lo import nao, orth
-from pyscf.tools import molden, localizer
+from pyscf import gto, scf, ao2mo, lo
+from pyscf.lo import nao, orth
+from pyscf.tools import molden
 import rhf
 import iao_helper
 import numpy as np
@@ -34,7 +33,7 @@ class localintegrals:
         
         # Information on the full HF problem
         self.mol        = the_mf.mol
-        self.fullEhf    = the_mf.hf_energy
+        self.fullEhf    = the_mf.e_tot
         self.fullDMao   = np.dot(np.dot( the_mf.mo_coeff, np.diag( the_mf.mo_occ )), the_mf.mo_coeff.T )
         self.fullJKao   = scf.hf.get_veff( self.mol, self.fullDMao, 0, 0, 1 ) #Last 3 numbers: dm_last, vhf_last, hermi
         self.fullFOCKao = self.mol.intor('cint1e_kin_sph') + self.mol.intor('cint1e_nuc_sph') + self.fullJKao
@@ -60,9 +59,10 @@ class localintegrals:
             if ( self._which == 'boys' ):
                 old_verbose = self.mol.verbose
                 self.mol.verbose = 5
-                loc = localizer.localizer( self.mol, self.ao2loc, self._which, use_full_hessian )
+                loc = lo.Boys( self.mol, self.ao2loc )
+                loc.conv_tol = localization_threshold
                 self.mol.verbose = old_verbose
-                self.ao2loc = loc.optimize( threshold=localization_threshold )
+                self.ao2loc = loc.kernel()
             self.TI_OK = False # Check yourself if OK, then overwrite
         if ( self._which == 'lowdin' ):
             assert( self.Norbs == self.mol.nao_nr() ) # Full active space required
@@ -116,7 +116,7 @@ class localintegrals:
         eigvals, eigvecs = np.linalg.eigh( self.activeFOCK )
         eigvecs = eigvecs[ :, eigvals.argsort() ]
         assert( self.Nelec % 2 == 0 )
-        numPairs = self.Nelec / 2
+        numPairs = self.Nelec // 2
         DMguess = 2 * np.dot( eigvecs[ :, :numPairs ], eigvecs[ :, :numPairs ].T )
         if ( self.ERIinMEM == True ):
             DMloc = rhf.solve_ERI( self.activeOEI, self.activeERI, DMguess, numPairs )
@@ -124,10 +124,10 @@ class localintegrals:
             DMloc = rhf.solve_JK( self.activeOEI, self.mol, self.ao2loc, DMguess, numPairs )
         newFOCKloc = self.loc_rhf_fock_bis( DMloc )
         newRHFener = self.activeCONST + 0.5 * np.einsum( 'ij,ij->', DMloc, self.activeOEI + newFOCKloc )
-        print "2-norm difference of RDM(self.activeFOCK) and RDM(self.active{OEI,ERI})  =", np.linalg.norm( DMguess - DMloc )
-        print "2-norm difference of self.activeFOCK and FOCK(RDM(self.active{OEI,ERI})) =", np.linalg.norm( self.activeFOCK - newFOCKloc )
-        print "RHF energy of mean-field input           =", self.fullEhf
-        print "RHF energy based on self.active{OEI,ERI} =", newRHFener
+        print("2-norm difference of RDM(self.activeFOCK) and RDM(self.active{OEI,ERI})  =", np.linalg.norm( DMguess - DMloc ))
+        print("2-norm difference of self.activeFOCK and FOCK(RDM(self.active{OEI,ERI})) =", np.linalg.norm( self.activeFOCK - newFOCKloc ))
+        print("RHF energy of mean-field input           =", self.fullEhf)
+        print("RHF energy based on self.active{OEI,ERI} =", newRHFener)
         
     def const( self ):
     
@@ -155,7 +155,7 @@ class localintegrals:
     def loc_tei( self ):
     
         if ( self.ERIinMEM == False ):
-            print "localintegrals::loc_tei : ERI of the localized orbitals are not stored in memory."
+            print("localintegrals::loc_tei : ERI of the localized orbitals are not stored in memory.")
         assert ( self.ERIinMEM == True )
         return self.activeERI
         

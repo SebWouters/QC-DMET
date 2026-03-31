@@ -1,5 +1,6 @@
 *pyc
 *~
+*.bak
 
 tests/*.molden
 tests/*.pyc

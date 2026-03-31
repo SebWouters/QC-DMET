@@ -21,8 +21,8 @@
 
 import sys
 sys.path.append('../src')
-import localintegrals, dmet, qcdmet_paths
-from pyscf import gto, scf, symm, future
+import local_integrals, dmet, qcdmet_paths
+from pyscf import gto, scf, symm
 from pyscf.cc import ccsd
 import numpy as np
 import sn2_struct_bis
@@ -48,7 +48,7 @@ mf.verbose = 4
 mf.scf()
 
 if ( False ):
-    from pyscf.tools import molden, localizer
+    from pyscf.tools import molden
     with open( 'sn2-mo.molden', 'w' ) as thefile:
         molden.header( mol, thefile )
         molden.orbital_coeff( mol, thefile, mf.mo_coeff )
@@ -57,14 +57,14 @@ if ( False ):
     ccsolver = ccsd.CCSD( mf )
     ccsolver.verbose = 5
     ECORR, t1, t2 = ccsolver.ccsd()
-    ECCSD = mf.hf_energy + ECORR
-    print "ERHF  for structure", thestructure, "=", mf.hf_energy
-    print "ECCSD for structure", thestructure, "=", ECCSD
+    ECCSD = mf.e_tot + ECORR
+    print("ERHF  for structure", thestructure, "=", mf.e_tot)
+    print("ECCSD for structure", thestructure, "=", ECCSD)
     
 if ( True ):
-    # myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', localization_threshold=1e-5 )
-    # myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
-    myInts = localintegrals.localintegrals( mf, range( mol.nao_nr() ), 'iao' )
+    # myInts = local_integrals.localintegrals( mf, range( mol.nao_nr() ), 'boys', localization_threshold=1e-5 )
+    # myInts = local_integrals.localintegrals( mf, range( mol.nao_nr() ), 'meta_lowdin' )
+    myInts = local_integrals.localintegrals( mf, list(range( mol.nao_nr())), 'iao' )
     myInts.molden( 'sn2-loc.molden' )
     
     unit_sizes = None
@@ -102,6 +102,6 @@ if ( True ):
             theDMET.BATH_ORBS[ 0 ] = 1
             theDMET.BATH_ORBS[ len(impurityClusters) - 1 ] = 1
         the_energy = theDMET.doselfconsistent()
-        print "######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy
+        print("######  DMET(", carbons_in_cluster,"C , CCSD ) /", thebasis1, "/", thebasis2, " =", the_energy)
 
     
